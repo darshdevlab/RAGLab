@@ -118,7 +118,7 @@ const $ = (id) => document.getElementById(id);
 
 function configureRuntimeMode() {
   if (!API_BASE) return;
-  ["fileInput", "uploadButton", "datasetText", "indexText", "memoryText", "addMemory"].forEach((id) => {
+  ["memoryText", "addMemory"].forEach((id) => {
     const element = $(id);
     if (element) element.hidden = true;
   });
@@ -373,26 +373,6 @@ function resetResults() {
   $("emptyState").classList.remove("is-hidden");
 }
 
-async function indexText(text, source = "browser text input") {
-  setBusy(true);
-  setStatus("Indexing dataset");
-  try {
-    const data = await api("/api/dataset/text", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ title: source, text }),
-    });
-    renderDataset(data.dataset);
-    state.activeDemoSlug = "custom";
-    renderDemos();
-    setStatus("Dataset indexed");
-  } catch (error) {
-    setStatus(error.message);
-  } finally {
-    setBusy(false);
-  }
-}
-
 async function addMemory() {
   setBusy(true);
   setStatus("Saving memory");
@@ -425,15 +405,6 @@ document.addEventListener("DOMContentLoaded", async () => {
   renderQuestionBank();
   $("runQuery").addEventListener("click", runQuery);
   $("loadSample").addEventListener("click", () => loadSample());
-  $("indexText").addEventListener("click", () => indexText($("datasetText").value, "Custom Browser Dataset"));
-  $("uploadButton").addEventListener("click", () => $("fileInput").click());
-  $("fileInput").addEventListener("change", async (event) => {
-    const file = event.target.files?.[0];
-    if (!file) return;
-    const text = await file.text();
-    await indexText(text, file.name);
-    event.target.value = "";
-  });
   $("addMemory").addEventListener("click", addMemory);
   await refreshDemos();
   await refreshDataset();

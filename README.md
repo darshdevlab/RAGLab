@@ -36,7 +36,7 @@ The local version avoids npm, pip, and external LLM APIs so the product behavior
 - The hosted `raglab` Edge Function uses Supabase runtime secrets server-side and is intentionally public because there is no auth for the portfolio demo.
 - Public write paths are disabled in the hosted function: `POST /api/dataset/text` and `POST /api/memory` return `403`.
 - Public queries are restricted to the four seeded demo dataset IDs and do not insert run logs, result rows, evidence rows, uploads, or memories.
-- Local development still supports upload/index/memory experiments through `backend/server.py`.
+- The UI is demo-only and does not show upload controls.
 
 ## Run Locally
 
@@ -60,13 +60,12 @@ GET  /api/health
 GET  /api/demos
 GET  /api/dataset
 POST /api/dataset/sample
-POST /api/dataset/text
 POST /api/query
 GET  /api/memory/{session_id}
 POST /api/memory
 ```
 
-In the hosted API, custom dataset indexing and memory writes are disabled for safety. Those endpoints remain listed because the local backend implements the full prototype workflow.
+In the hosted API, custom dataset indexing and memory writes are disabled for safety. The blocked `POST /api/dataset/text` endpoint remains server-side only as a defensive fallback and returns `403`.
 
 ## Hosted API
 
