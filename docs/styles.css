@@ -115,7 +115,7 @@ textarea:disabled {
 
 .chat-sidebar {
   display: grid;
-  grid-template-rows: minmax(210px, 0.75fr) minmax(0, 1.25fr);
+  grid-template-rows: minmax(310px, 0.95fr) minmax(0, 1.05fr);
   overflow: hidden;
 }
 
@@ -168,6 +168,7 @@ textarea:disabled {
 
 .dataset-menu {
   display: grid;
+  align-content: start;
   gap: 8px;
   overflow: auto;
   padding-right: 2px;
@@ -175,15 +176,19 @@ textarea:disabled {
 
 .dataset-menu-item {
   display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  grid-template-areas:
+    "kind extension"
+    "title title";
   width: 100%;
-  min-height: 72px;
-  align-content: center;
-  gap: 4px;
+  min-height: 76px;
+  align-content: start;
+  gap: 7px 10px;
   border: 1px solid #d9ddd7;
   border-radius: 8px;
   background: #fbfcfb;
   color: #1f2723;
-  padding: 10px;
+  padding: 10px 11px;
   text-align: left;
 }
 
@@ -196,11 +201,30 @@ textarea:disabled {
 }
 
 .dataset-menu-item strong {
-  overflow: hidden;
+  grid-area: title;
   font-size: 14px;
-  line-height: 1.25;
+  line-height: 1.28;
+  white-space: normal;
+  overflow-wrap: anywhere;
+}
+
+.dataset-menu-item span {
+  grid-area: kind;
+  min-width: 0;
+  overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
+}
+
+.dataset-menu-item small {
+  grid-area: extension;
+  justify-self: end;
+  border: 1px solid #d2d9d4;
+  border-radius: 999px;
+  background: #ffffff;
+  color: #173f38;
+  padding: 2px 7px;
+  line-height: 1.1;
 }
 
 .format-badge {
@@ -794,7 +818,7 @@ textarea:disabled {
   }
 
   .dataset-menu {
-    max-height: 280px;
+    max-height: 360px;
   }
 
   .chat-main {
