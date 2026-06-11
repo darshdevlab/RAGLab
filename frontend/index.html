@@ -4,113 +4,32 @@
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <title>RAGLab</title>
-    <link rel="stylesheet" href="styles.css?v=20260611-eda" />
-    <script src="app.js?v=20260611-eda" defer></script>
+    <link rel="stylesheet" href="styles.css?v=20260611-datasets" />
+    <script src="app.js?v=20260611-datasets" defer></script>
   </head>
   <body>
     <main class="app-shell">
       <header class="topbar">
         <div>
           <div class="eyebrow">RAGLab</div>
-          <h1>RAG strategy selector</h1>
+          <h1>Datasets</h1>
         </div>
-        <div class="status-pill" id="status">RAG engine ready</div>
+        <div class="status-pill" id="status">Loading datasets</div>
       </header>
 
-      <section class="workspace-grid">
-        <aside class="control-panel">
-          <section class="panel-block">
-            <div class="block-head">
-              <h2>Dataset</h2>
-              <button class="icon-button" type="button" id="loadSample" title="Reload selected demo">↻</button>
-            </div>
-            <div class="stat-grid">
-              <div class="stat-box"><strong id="statChunks">0</strong><span>Chunks</span></div>
-              <div class="stat-box"><strong id="statEntities">0</strong><span>Entities</span></div>
-              <div class="stat-box"><strong id="statRelations">0</strong><span>Relations</span></div>
-              <div class="stat-box"><strong id="statTokens">0</strong><span>Avg tokens</span></div>
-            </div>
-            <div class="dataset-meta">
-              <strong id="datasetTitle">No dataset</strong>
-              <span id="datasetSource">Waiting</span>
-            </div>
-            <div class="demo-list" id="demoList"></div>
-          </section>
-
-          <section class="panel-block">
-            <div class="block-head">
-              <h2>Memory</h2>
-              <span class="count-badge" id="memoryCount">0</span>
-            </div>
-            <textarea class="memory-input" id="memoryText">Prefer the cheapest fully online architecture that still shows real retrieval evidence.</textarea>
-            <button class="secondary-button" type="button" id="addMemory">Add memory</button>
-            <div class="memory-list" id="memoryList"></div>
-          </section>
+      <section class="dataset-workspace">
+        <aside class="dataset-panel">
+          <div class="panel-head">
+            <h2>Dataset Name</h2>
+            <span id="datasetCount">0</span>
+          </div>
+          <div class="dataset-list" id="datasetList"></div>
         </aside>
 
-        <section class="query-stage">
-          <section class="eda-panel">
-            <div class="eda-head">
-              <div>
-                <span>Dataset EDA</span>
-                <h2>Available datasets</h2>
-              </div>
-              <div class="eda-mode" id="edaActiveType">demo corpus</div>
-            </div>
-            <div class="eda-summary" id="edaSummary"></div>
-            <div class="eda-dataset-grid" id="edaDatasetGrid"></div>
-            <div class="eda-body">
-              <div class="eda-chart" id="edaChart"></div>
-              <div class="eda-profile" id="edaProfile"></div>
-            </div>
-          </section>
-
-          <section class="query-panel">
-            <div class="question-row">
-              <textarea id="question">Which RAG method is safest for a mixed query about Vercel and Supabase deployment?</textarea>
-              <button class="run-button" type="button" id="runQuery">Run</button>
-            </div>
-            <div class="question-bank" id="questionBank"></div>
-          </section>
-
-          <section class="benchmark-panel">
-            <div class="benchmark-head">
-              <div>
-                <span>Gold QA</span>
-                <h2>Benchmark</h2>
-              </div>
-              <div class="benchmark-actions">
-                <span id="benchmarkStatus">0/0</span>
-                <button class="run-button" type="button" id="runBenchmark">Run benchmark</button>
-              </div>
-            </div>
-            <div class="prep-rail" id="prepRail"></div>
-            <div class="benchmark-questions" id="benchmarkQuestions"></div>
-            <div class="benchmark-count"><strong id="benchmarkCount">0</strong><span>prepared QA pairs</span></div>
-            <div class="benchmark-board is-hidden" id="benchmarkBoard"></div>
-          </section>
-
-          <section class="recommendation-band is-hidden" id="recommendationBand">
-            <div>
-              <span>Recommended</span>
-              <h2 id="recommendedLabel">-</h2>
-              <p id="recommendedReason"></p>
-            </div>
-            <div class="query-type" id="queryType">mixed</div>
-          </section>
-
-          <section class="comparison-strip is-hidden" id="comparisonStrip">
-            <div class="comparison-cards" id="comparisonCards"></div>
-          </section>
-
-          <section class="result-layout is-hidden" id="resultLayout">
-            <div class="method-column" id="methodColumn"></div>
-            <article class="method-detail" id="methodDetail"></article>
-          </section>
-
-          <section class="empty-state" id="emptyState">
-            <h2>Ready to compare retrieval strategies</h2>
-          </section>
+        <section class="dataset-view" id="datasetView">
+          <div class="empty-state">
+            <h2>No dataset selected</h2>
+          </div>
         </section>
       </section>
     </main>

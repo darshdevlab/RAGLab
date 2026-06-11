@@ -1,16 +1,74 @@
-const SESSION_ID = "demo";
 const HOSTED_API_BASE = "https://peluzzqoihjvkdtedsiz.supabase.co/functions/v1/raglab";
 const LOCAL_HOSTS = new Set(["localhost", "127.0.0.1", "::1"]);
 const API_BASE = LOCAL_HOSTS.has(window.location.hostname) ? "" : HOSTED_API_BASE;
 
-const hostedDemos = [
+const datasetFiles = {
+  "raglab-architecture": `# RAGLab Demo Dataset
+
+RAGLab is a product prototype for comparing retrieval augmented generation strategies on the same dataset. The platform helps a visitor choose prepared demo corpora, ask natural language questions, inspect retrieved evidence, and see which RAG strategy works best for that dataset and query type.
+
+Vector RAG uses hosted pgvector similarity search to find chunks with similar meaning signals. In this hosted prototype the embedding is a deterministic hashed token vector so the app works without a paid model API. Later it can be swapped for an open-source embedding endpoint. Vector RAG is useful for concept questions, but it can fail when the query requires an exact term, identifier, or quoted phrase.
+
+BM25 and keyword RAG use Postgres full-text search. BM25 is strong when the user searches for exact terms such as pgvector, Supabase, GraphRAG, latency, citations, or a named product. BM25 is fast, explainable, and cheap. It can miss paraphrases when the document uses different wording from the question.
+
+Hybrid RAG combines keyword scores with vector similarity scores. Hybrid RAG is often the safest default because it keeps exact-term precision while recovering semantic matches. A good hybrid system normalizes BM25 and vector scores before combining them. It should show score components so the user can understand why a chunk was selected.
+
+Memory RAG adds session context. It stores user preferences, prior questions, accepted facts, and rejected facts. Memory RAG is useful when the user says things like remember that I prefer low cost deployment and later asks which architecture should be selected. Memory must include approve, delete, and inspect controls because uncontrolled memory can make retrieval biased or stale.
+
+GraphRAG builds an entity and relationship layer over the document collection. Entities can include RAGLab, Supabase, pgvector, Vercel, BM25, Hybrid RAG, Memory RAG, GraphRAG, and citations. Relationships connect methods to strengths, limitations, storage choices, and deployment decisions. GraphRAG is useful for questions about how concepts connect, which methods depend on embeddings, or which architecture links Vercel with Supabase.
+
+For the online version, Vercel can host the interactive frontend, but this live prototype is served from a Supabase Edge Function. Supabase stores documents, chunks, metadata, vector embeddings through pgvector, keyword search indexes, memory rows, entities, and relations. This means the first online version does not need separate Pinecone, Qdrant, Weaviate, or Neo4j deployments. Those adapters can be added later if the product becomes a database benchmark.
+
+RAGLab should not pretend every RAG method is correct. The dashboard should show retrieved chunks, citations, latency, method strengths, method limitations, and a recommendation score. A recommendation is only trustworthy when evidence is visible. The strongest portfolio version is a full working end-to-end prototype: data ingestion, chunking, indexing, query execution, retrieval comparison, scoring, ranking, and interactive UI.`,
+
+  "clinical-trial": `# CardioMap Trial Protocol
+
+CardioMap is a synthetic clinical trial protocol for a remote blood pressure monitoring study. The protocol compares usual care with a digital coaching arm called DCA-42. Participants wear the PulseBand PB-7 cuff, answer symptom surveys, and receive medication adherence nudges. The primary endpoint is change in systolic blood pressure at week 12.
+
+Eligibility requires adults aged 35 to 75 with two clinic systolic readings above 140 mmHg or one home seven-day average above 135 mmHg. Exclusion criteria include pregnancy, dialysis, active myocarditis, recent stroke within 90 days, and current use of investigational drug INV-908. Patients with atrial fibrillation may enroll only if their resting heart rate is below 110 bpm.
+
+The safety workflow routes red alerts to Nurse Triage, amber alerts to the coaching queue, and device-quality alerts to Biomedical Operations. A red alert is generated when systolic pressure exceeds 180 mmHg, diastolic pressure exceeds 120 mmHg, or the patient reports chest pain with shortness of breath. Amber alerts cover missed readings for three days, dizziness, or mild edema.
+
+The protocol glossary defines SBP as systolic blood pressure, DBP as diastolic blood pressure, eGFR as estimated glomerular filtration rate, and AE as adverse event. Keyword retrieval should be strong for exact abbreviations such as eGFR, AE, PB-7, DCA-42, and INV-908. Semantic retrieval should help when a user asks about kidney function, safety routing, or high blood pressure without using the exact terms.
+
+CardioMap has a monitoring graph that connects PulseBand PB-7 to Biomedical Operations, Nurse Triage to red alerts, and DCA-42 to adherence nudges. The graph also links chest pain to red alert escalation and dialysis to exclusion. A relationship query about which teams handle device problems should traverse from device-quality alerts to Biomedical Operations.`,
+
+  "incident-runbook": `# Northwind Incident Response Runbook
+
+Northwind Cloud runs a synthetic checkout platform with API Gateway, Cart Service, Payment Service, Inventory Service, Fraud Scoring, PostgreSQL Orders, and Redis Session Cache. The customer-facing service level objective is 99.9 percent monthly availability and p95 checkout latency below 450 ms.
+
+Incident SEV-1 is declared when checkout success rate falls below 94 percent for five minutes, payment authorization errors exceed 6 percent, or API Gateway returns more than 2 percent 5xx responses. SEV-2 is declared when p95 latency exceeds 900 ms for ten minutes or one region has elevated queue depth. The escalation channel is #incident-checkout and the incident commander owns status updates every fifteen minutes.
+
+The dependency map is important. API Gateway calls Cart Service, Cart Service calls Inventory Service and Redis Session Cache, Payment Service calls Fraud Scoring, and PostgreSQL Orders stores completed orders. If Redis Session Cache is unavailable, Cart Service can serve stale carts for ten minutes. If Fraud Scoring is unavailable, Payment Service must switch to rules-only mode after approval from Risk Operations.
+
+Recovery playbooks include rollback of the latest Gateway routing rule, scaling Payment Service workers, disabling nonessential recommendation calls, and enabling queue drain mode. Rollback is preferred when the latest deployment changed routing, headers, or request signing. Queue drain mode is preferred when the database is healthy but workers are behind.
+
+GraphRAG should perform well on questions about service dependencies and escalation paths. BM25 should perform well for exact strings such as SEV-1, p95, #incident-checkout, Redis Session Cache, and rules-only mode. Hybrid retrieval should do well when a query mixes exact incident codes with broad language about checkout failure.`,
+
+  "support-kb": `# AtlasDesk Customer Support Knowledge Base
+
+AtlasDesk is a synthetic B2B support product with three plans: Starter, Growth, and Enterprise. Starter includes email support with a 24 hour target, Growth includes chat support with a four hour target, and Enterprise includes a named customer success manager with a one hour urgent target.
+
+Refund policy RFD-14 says a customer can receive a full refund within 14 days if fewer than 500 tickets were processed and no custom onboarding was delivered. After 14 days, billing credits require Finance Approval. Enterprise customers with annual contracts use addendum ENT-A9, which allows service credits for missed urgent response targets.
+
+Data retention policy DRP-30 keeps closed tickets for 30 months on Growth and Enterprise, but only 12 months on Starter. Audit exports are available on Enterprise and must be requested by an account owner. A deletion request removes attachments first, then ticket messages, then analytics aggregates during the next nightly privacy job.
+
+The support graph connects Enterprise to customer success manager, urgent target, audit exports, and ENT-A9. It connects refund requests to RFD-14, Finance Approval, and billing credits. It connects deletion requests to attachments, ticket messages, analytics aggregates, and privacy job. Relationship queries should explain the chain rather than only return a single policy paragraph.
+
+Memory RAG is useful for AtlasDesk when the user says they prefer low-cost plans, short response times, or strict retention. If the user remembers that they are evaluating Enterprise compliance, retrieval should bias toward audit exports, retention, account owner controls, and service credits.`,
+};
+
+const localDemos = [
   {
     slug: "raglab-architecture",
     title: "RAGLab Architecture",
     source: "demo:raglab-architecture",
     description: "Portfolio architecture corpus for RAG method comparison.",
+    profile: {
+      kind: "Architecture docs",
+      focus: "RAG architecture, pgvector, deployment options, and GraphRAG relationships.",
+    },
     dataset: {
-      id: "0e3e885c-5d70-4814-bf27-ecd784287c18",
       slug: "raglab-architecture",
       title: "RAGLab Demo Dataset",
       source: "sample",
@@ -20,20 +78,17 @@ const hostedDemos = [
       relations: 112,
       avg_chunk_tokens: 94,
     },
-    questions: [
-      "Which RAG method is safest for a mixed query about Vercel and Supabase deployment?",
-      "How does Hybrid RAG combine keyword and vector retrieval?",
-      "Which method is best for exact terms like pgvector and BM25?",
-      "What connects Vercel, Supabase, pgvector, and GraphRAG?",
-    ],
   },
   {
     slug: "clinical-trial",
     title: "CardioMap Trial Protocol",
     source: "demo:clinical-trial",
     description: "Clinical protocol with abbreviations, safety thresholds, and routing relationships.",
+    profile: {
+      kind: "Clinical protocol",
+      focus: "Clinical abbreviations, safety thresholds, escalation routing, and device-quality alerts.",
+    },
     dataset: {
-      id: "b56cefe5-2759-40d8-8028-971da298bb3f",
       slug: "clinical-trial",
       title: "CardioMap Trial Protocol",
       source: "browser",
@@ -43,20 +98,17 @@ const hostedDemos = [
       relations: 84,
       avg_chunk_tokens: 90,
     },
-    questions: [
-      "Which exact exclusions mention INV-908, dialysis, or eGFR?",
-      "What should happen when a patient has chest pain and shortness of breath?",
-      "Which team handles device-quality alerts from PulseBand PB-7?",
-      "Explain the relationship between DCA-42, adherence nudges, and week 12 blood pressure.",
-    ],
   },
   {
     slug: "incident-runbook",
     title: "Northwind Incident Runbook",
     source: "demo:incident-runbook",
     description: "Production incident runbook with exact SEV terms and service dependency graph.",
+    profile: {
+      kind: "Incident runbook",
+      focus: "SEV rules, service dependency chains, payment fallback, and rollback decisions.",
+    },
     dataset: {
-      id: "e90cf5d7-24f4-410b-9c67-36ce8a7fe764",
       slug: "incident-runbook",
       title: "Northwind Incident Runbook",
       source: "browser",
@@ -66,20 +118,17 @@ const hostedDemos = [
       relations: 84,
       avg_chunk_tokens: 86,
     },
-    questions: [
-      "What exact conditions declare SEV-1 for checkout?",
-      "How are API Gateway, Cart Service, Redis cache, and Payment Service connected?",
-      "When should Payment Service switch to rules-only mode?",
-      "Which recovery action fits a routing or request-signing deployment issue?",
-    ],
   },
   {
     slug: "support-kb",
     title: "AtlasDesk Support KB",
     source: "demo:support-kb",
     description: "Support policy corpus for refund, retention, plan, and memory-biased queries.",
+    profile: {
+      kind: "Support KB",
+      focus: "Refund policies, support plans, retention controls, and memory-biased recommendations.",
+    },
     dataset: {
-      id: "415a6e7c-7de4-4a09-80bb-4264193e4b3e",
       slug: "support-kb",
       title: "AtlasDesk Support KB",
       source: "browser",
@@ -89,176 +138,75 @@ const hostedDemos = [
       relations: 56,
       avg_chunk_tokens: 104,
     },
-    questions: [
-      "What are the exact requirements in refund policy RFD-14?",
-      "Which plan has audit exports and a named customer success manager?",
-      "How does a deletion request move through attachments, messages, and analytics?",
-      "Based on my preference for strict retention, which plan should I inspect?",
-    ],
   },
 ];
 
-const benchmarkRegistry = {
-  "raglab-architecture": [
-    {
-      type: "mixed",
-      question: "Which RAG method is safest for a mixed query about Vercel and Supabase deployment?",
-      expected: "Hybrid RAG is safest because it balances exact keyword precision with vector recall and keeps evidence visible.",
-      terms: ["Hybrid RAG", "keyword", "vector", "Vercel", "Supabase", "evidence"],
-    },
-    {
-      type: "semantic",
-      question: "How does Hybrid RAG combine keyword and vector retrieval?",
-      expected: "Hybrid RAG combines normalized keyword scores with vector similarity scores before ranking chunks.",
-      terms: ["keyword scores", "vector similarity", "normalized", "ranking"],
-    },
-    {
-      type: "exact",
-      question: "Which method is best for exact terms like pgvector and BM25?",
-      expected: "BM25 or keyword RAG is strongest for exact terms such as pgvector and BM25.",
-      terms: ["BM25", "keyword", "exact terms", "pgvector"],
-    },
-    {
-      type: "relationship",
-      question: "What connects Vercel, Supabase, pgvector, and GraphRAG?",
-      expected: "The architecture connects Vercel frontend/orchestration with Supabase storage, pgvector search, and GraphRAG entity relationships.",
-      terms: ["Vercel", "Supabase", "pgvector", "GraphRAG", "relationships"],
-    },
-  ],
-  "clinical-trial": [
-    {
-      type: "exact",
-      question: "Which exact exclusions mention INV-908, dialysis, or eGFR?",
-      expected: "Exclusions include dialysis and current use of investigational drug INV-908; eGFR is defined in the glossary.",
-      terms: ["dialysis", "INV-908", "exclusion", "eGFR", "glossary"],
-    },
-    {
-      type: "routing",
-      question: "What should happen when a patient has chest pain and shortness of breath?",
-      expected: "Chest pain with shortness of breath generates a red alert routed to Nurse Triage.",
-      terms: ["chest pain", "shortness of breath", "red alert", "Nurse Triage"],
-    },
-    {
-      type: "relationship",
-      question: "Which team handles device-quality alerts from PulseBand PB-7?",
-      expected: "Device-quality alerts from PulseBand PB-7 route to Biomedical Operations.",
-      terms: ["PulseBand PB-7", "device-quality alerts", "Biomedical Operations"],
-    },
-    {
-      type: "semantic",
-      question: "Explain the relationship between DCA-42, adherence nudges, and week 12 blood pressure.",
-      expected: "DCA-42 is the digital coaching arm that sends adherence nudges and measures systolic blood pressure change at week 12.",
-      terms: ["DCA-42", "adherence nudges", "week 12", "systolic blood pressure"],
-    },
-  ],
-  "incident-runbook": [
-    {
-      type: "exact",
-      question: "What exact conditions declare SEV-1 for checkout?",
-      expected: "SEV-1 is declared for checkout success below 94 percent, payment authorization errors above 6 percent, or API Gateway 5xx above 2 percent.",
-      terms: ["SEV-1", "94 percent", "payment authorization", "6 percent", "API Gateway", "5xx"],
-    },
-    {
-      type: "relationship",
-      question: "How are API Gateway, Cart Service, Redis cache, and Payment Service connected?",
-      expected: "API Gateway calls Cart Service, Cart Service uses Redis Session Cache, and Payment Service connects to Fraud Scoring.",
-      terms: ["API Gateway", "Cart Service", "Redis Session Cache", "Payment Service", "Fraud Scoring"],
-    },
-    {
-      type: "routing",
-      question: "When should Payment Service switch to rules-only mode?",
-      expected: "Payment Service switches to rules-only mode when Fraud Scoring is unavailable after approval from Risk Operations.",
-      terms: ["Payment Service", "rules-only mode", "Fraud Scoring", "Risk Operations"],
-    },
-    {
-      type: "semantic",
-      question: "Which recovery action fits a routing or request-signing deployment issue?",
-      expected: "Rollback is preferred when the latest deployment changed routing, headers, or request signing.",
-      terms: ["rollback", "routing", "headers", "request signing", "latest deployment"],
-    },
-  ],
-  "support-kb": [
-    {
-      type: "exact",
-      question: "What are the exact requirements in refund policy RFD-14?",
-      expected: "RFD-14 allows a full refund within 14 days if fewer than 500 tickets were processed and no custom onboarding was delivered.",
-      terms: ["RFD-14", "14 days", "500 tickets", "custom onboarding", "full refund"],
-    },
-    {
-      type: "exact",
-      question: "Which plan has audit exports and a named customer success manager?",
-      expected: "Enterprise has audit exports and a named customer success manager.",
-      terms: ["Enterprise", "audit exports", "named customer success manager"],
-    },
-    {
-      type: "relationship",
-      question: "How does a deletion request move through attachments, messages, and analytics?",
-      expected: "A deletion request removes attachments first, then ticket messages, then analytics aggregates during the nightly privacy job.",
-      terms: ["deletion request", "attachments", "ticket messages", "analytics aggregates", "privacy job"],
-    },
-    {
-      type: "memory",
-      question: "Based on my preference for strict retention, which plan should I inspect?",
-      expected: "Strict retention should inspect Enterprise or Growth because they keep closed tickets for 30 months and Enterprise adds compliance controls.",
-      terms: ["strict retention", "Enterprise", "Growth", "30 months", "audit exports"],
-    },
-  ],
-};
-
-const datasetProfileRegistry = {
-  "raglab-architecture": {
-    kind: "Architecture docs",
-    focus: "RAG architecture, pgvector, deployment options, and GraphRAG relationships.",
-    useCases: ["mixed", "semantic", "relationship", "deployment"],
-  },
-  "clinical-trial": {
-    kind: "Clinical protocol",
-    focus: "Clinical abbreviations, safety thresholds, escalation routing, and device-quality alerts.",
-    useCases: ["exact", "routing", "relationship", "safety"],
-  },
-  "incident-runbook": {
-    kind: "Incident runbook",
-    focus: "SEV rules, service dependency chains, payment fallback, and rollback decisions.",
-    useCases: ["exact", "dependency", "routing", "recovery"],
-  },
-  "support-kb": {
-    kind: "Support KB",
-    focus: "Refund policies, support plans, retention controls, and memory-biased recommendations.",
-    useCases: ["policy", "retention", "memory", "compliance"],
-  },
-};
-
-const METHOD_ORDER = ["bm25", "vector", "hybrid", "memory", "graph"];
-
-const defaultQuestions = [
-  "Which RAG method is safest for a mixed query about Vercel and Supabase deployment?",
-  "How does Hybrid RAG combine keyword and vector retrieval?",
-  "Which method is best for exact terms like pgvector and BM25?",
-  "What connects Vercel, Supabase, pgvector, and GraphRAG?",
-  "Based on my preferences, which architecture should be selected?",
-];
+const stopwords = new Set([
+  "about",
+  "after",
+  "also",
+  "and",
+  "are",
+  "because",
+  "been",
+  "but",
+  "can",
+  "does",
+  "for",
+  "from",
+  "has",
+  "have",
+  "into",
+  "must",
+  "not",
+  "only",
+  "or",
+  "over",
+  "should",
+  "such",
+  "than",
+  "that",
+  "the",
+  "their",
+  "then",
+  "this",
+  "through",
+  "to",
+  "uses",
+  "when",
+  "which",
+  "with",
+]);
 
 const state = {
-  activeDemoSlug: "",
-  benchmark: null,
-  datasetId: "",
+  activeFile: null,
+  activeSlug: "",
   demos: [],
-  response: null,
-  selectedMethod: "",
 };
 
 const $ = (id) => document.getElementById(id);
+const localBySlug = new Map(localDemos.map((demo) => [demo.slug, demo]));
 
-function configureRuntimeMode() {
-  if (!API_BASE) return;
-  ["memoryText", "addMemory"].forEach((id) => {
-    const element = $(id);
-    if (element) element.hidden = true;
-  });
+document.addEventListener("DOMContentLoaded", init);
+
+async function init() {
+  await refreshDatasets();
+  const deepLinkedSlug = window.location.hash.replace("#", "");
+  if (deepLinkedSlug && state.demos.some((demo) => demo.slug === deepLinkedSlug)) {
+    loadDataset(deepLinkedSlug);
+  }
 }
 
-function setStatus(message) {
-  $("status").textContent = message;
+async function refreshDatasets() {
+  setStatus("Loading datasets");
+  try {
+    const payload = await api("/api/demos");
+    state.demos = (payload.demos?.length ? payload.demos : localDemos).map(mergeDemo);
+  } catch {
+    state.demos = localDemos;
+  }
+  renderDatasetList();
+  setStatus(`${state.demos.length} datasets ready`);
 }
 
 async function api(path, options = {}) {
@@ -270,713 +218,238 @@ async function api(path, options = {}) {
   return payload;
 }
 
-function setBusy(isBusy) {
-  document.querySelectorAll("button").forEach((button) => {
-    button.disabled = isBusy;
-  });
-}
-
-function renderDataset(dataset) {
-  state.datasetId = dataset.id || "";
-  state.activeDemoSlug = dataset.slug || state.activeDemoSlug;
-  $("statChunks").textContent = dataset.chunks;
-  $("statEntities").textContent = dataset.entities;
-  $("statRelations").textContent = dataset.relations;
-  $("statTokens").textContent = dataset.avg_chunk_tokens;
-  $("datasetTitle").textContent = dataset.title;
-  $("datasetSource").textContent = dataset.source;
-  renderDemos();
-  renderBenchmarkSetup();
-  renderEdaDashboard();
-}
-
-function renderMemory(memories) {
-  $("memoryCount").textContent = memories.length;
-  $("memoryList").innerHTML = memories
-    .slice(0, 3)
-    .map((memory) => `<p>${escapeHtml(memory.text)}</p>`)
-    .join("");
-}
-
-function activeDemo() {
-  return state.demos.find((demo) => demo.slug === state.activeDemoSlug) || state.demos[0] || null;
-}
-
-function activeQuestions() {
-  return activeDemo()?.questions?.length ? activeDemo().questions : defaultQuestions;
-}
-
-function activeBenchmark() {
-  return activeDemo()?.benchmark?.length ? activeDemo().benchmark : [];
-}
-
-function activeDatasetProfile() {
-  const demo = activeDemo();
-  if (!demo) return null;
-  const dataset = demo.dataset || {};
-  const profile = datasetProfileRegistry[demo.slug] || {};
-  const qa = demo.benchmark?.length ? demo.benchmark : benchmarkRegistry[demo.slug] || [];
+function mergeDemo(remote) {
+  const local = localBySlug.get(remote.slug) || {};
   return {
-    demo,
-    dataset,
-    qa,
-    kind: profile.kind || "Demo corpus",
-    focus: profile.focus || demo.description || "Prepared retrieval dataset.",
-    useCases: profile.useCases || [],
+    ...local,
+    ...remote,
+    profile: { ...(local.profile || {}), ...(remote.profile || {}) },
+    dataset: { ...(local.dataset || {}), ...(remote.dataset || {}) },
   };
 }
 
-function datasetTotal(metric) {
-  return state.demos.reduce((sum, demo) => sum + Number(demo.dataset?.[metric] || 0), 0);
-}
-
-function renderEdaDashboard() {
-  if (!$("edaSummary") || !state.demos.length) return;
-  const active = activeDatasetProfile();
-  const qaTotal = state.demos.reduce((sum, demo) => sum + (demo.benchmark?.length || 0), 0);
-  const avgTokens = Math.round(
-    state.demos.reduce((sum, demo) => sum + Number(demo.dataset?.avg_chunk_tokens || 0), 0) / Math.max(1, state.demos.length)
-  );
-
-  $("edaActiveType").textContent = active?.kind || "demo corpus";
-  $("edaSummary").innerHTML = [
-    ["Datasets", state.demos.length, "prepared corpora"],
-    ["Documents", datasetTotal("documents"), "seeded sources"],
-    ["Chunks", datasetTotal("chunks"), "retrieval units"],
-    ["Entities", datasetTotal("entities"), "graph nodes"],
-    ["Gold QA", qaTotal, `${avgTokens} avg tokens`],
-  ]
-    .map(
-      ([label, value, hint]) => `
-        <article class="eda-stat">
-          <span>${escapeHtml(label)}</span>
-          <strong>${escapeHtml(value)}</strong>
-          <small>${escapeHtml(hint)}</small>
-        </article>
-      `
-    )
-    .join("");
-
-  $("edaDatasetGrid").innerHTML = state.demos
+function renderDatasetList() {
+  $("datasetCount").textContent = state.demos.length;
+  $("datasetList").innerHTML = state.demos
     .map((demo) => {
-      const dataset = demo.dataset || {};
-      const profile = datasetProfileRegistry[demo.slug] || {};
-      const activeClass = demo.slug === state.activeDemoSlug ? " is-active" : "";
+      const active = demo.slug === state.activeSlug ? " is-active" : "";
       return `
-        <button type="button" class="eda-dataset-card${activeClass}" data-slug="${escapeHtml(demo.slug)}">
-          <span>${escapeHtml(profile.kind || "Demo corpus")}</span>
+        <button type="button" class="dataset-item${active}" data-slug="${escapeHtml(demo.slug)}">
           <strong>${escapeHtml(demo.title)}</strong>
-          <small>${escapeHtml(demo.description || "")}</small>
-          <i>${Number(dataset.chunks || 0)} chunks &middot; ${demo.benchmark?.length || 0} QA</i>
+          <span>${escapeHtml(demo.profile?.kind || demo.source || "Demo dataset")}</span>
         </button>
       `;
     })
     .join("");
-  $("edaDatasetGrid").querySelectorAll("button").forEach((button) => {
-    button.addEventListener("click", () => loadSample(button.dataset.slug));
-  });
 
-  renderEdaBars();
-  renderEdaProfile();
-}
-
-function renderEdaBars() {
-  if (!$("edaChart")) return;
-  const maxes = {
-    chunks: Math.max(1, ...state.demos.map((demo) => Number(demo.dataset?.chunks || 0))),
-    entities: Math.max(1, ...state.demos.map((demo) => Number(demo.dataset?.entities || 0))),
-    relations: Math.max(1, ...state.demos.map((demo) => Number(demo.dataset?.relations || 0))),
-  };
-  $("edaChart").innerHTML = `
-    <div class="eda-section-title">
-      <strong>Corpus shape</strong>
-      <span>chunks / entities / relations</span>
-    </div>
-    ${state.demos
-      .map((demo) => {
-        const dataset = demo.dataset || {};
-        const activeClass = demo.slug === state.activeDemoSlug ? " is-active" : "";
-        return `
-          <article class="eda-bar-row${activeClass}">
-            <div class="eda-bar-title">
-              <strong>${escapeHtml(demo.title)}</strong>
-              <span>${escapeHtml(datasetProfileRegistry[demo.slug]?.kind || "Demo corpus")}</span>
-            </div>
-            <div class="eda-bars">
-              ${edaMetricBar("Chunks", dataset.chunks, maxes.chunks, "chunks")}
-              ${edaMetricBar("Entities", dataset.entities, maxes.entities, "entities")}
-              ${edaMetricBar("Relations", dataset.relations, maxes.relations, "relations")}
-            </div>
-          </article>
-        `;
-      })
-      .join("")}
-  `;
-}
-
-function edaMetricBar(label, value, max, tone) {
-  const number = Number(value || 0);
-  const width = Math.max(4, Math.round((number / Math.max(1, max)) * 100));
-  return `
-    <div class="eda-bar eda-bar--${tone}">
-      <span>${escapeHtml(label)}</span>
-      <i><b style="width:${width}%"></b></i>
-      <em>${number}</em>
-    </div>
-  `;
-}
-
-function renderEdaProfile() {
-  const active = activeDatasetProfile();
-  if (!$("edaProfile") || !active) return;
-  const { demo, dataset, qa, kind, focus, useCases } = active;
-  $("edaProfile").innerHTML = `
-    <div class="eda-section-title">
-      <strong>${escapeHtml(demo.title)}</strong>
-      <span>${escapeHtml(kind)}</span>
-    </div>
-    <p>${escapeHtml(focus)}</p>
-    <div class="eda-profile-stats">
-      <span><b>${Number(dataset.documents || 0)}</b><small>Docs</small></span>
-      <span><b>${Number(dataset.chunks || 0)}</b><small>Chunks</small></span>
-      <span><b>${Number(dataset.entities || 0)}</b><small>Entities</small></span>
-      <span><b>${Number(dataset.relations || 0)}</b><small>Edges</small></span>
-    </div>
-    <div class="eda-chip-row">
-      ${useCases.map((item) => `<span>${escapeHtml(item)}</span>`).join("")}
-    </div>
-    <div class="eda-question-list">
-      ${qa
-        .slice(0, 2)
-        .map(
-          (item, index) => `
-            <button type="button" data-question="${escapeHtml(item.question)}">
-              <strong>Q${index + 1}</strong>
-              <span>${escapeHtml(item.type)}</span>
-              <small>${escapeHtml(item.question)}</small>
-            </button>
-          `
-        )
-        .join("")}
-    </div>
-  `;
-  $("edaProfile").querySelectorAll("button").forEach((button) => {
-    button.addEventListener("click", () => {
-      $("question").value = button.dataset.question;
-      runQuery();
-    });
+  $("datasetList").querySelectorAll("button").forEach((button) => {
+    button.addEventListener("click", () => loadDataset(button.dataset.slug));
   });
 }
 
-function withBenchmark(demo) {
-  const fallback = hostedDemos.find((item) => item.slug === demo.slug) || {};
-  return {
-    ...fallback,
-    ...demo,
-    dataset: { ...(fallback.dataset || {}), ...(demo.dataset || {}) },
-    questions: demo.questions?.length ? demo.questions : fallback.questions || defaultQuestions,
-    benchmark: benchmarkRegistry[demo.slug] || fallback.benchmark || [],
-  };
-}
+async function loadDataset(slug) {
+  const demo = state.demos.find((item) => item.slug === slug);
+  if (!demo) return;
 
-function renderDemos() {
-  if (!$("demoList")) return;
-  $("demoList").innerHTML = state.demos
-    .map((demo) => {
-      const active = demo.slug === state.activeDemoSlug ? " is-active" : "";
-      return `<button type="button" class="demo-chip${active}" data-slug="${escapeHtml(demo.slug)}" title="${escapeHtml(demo.description)}">${escapeHtml(demo.title)}</button>`;
-    })
-    .join("");
-  $("demoList").querySelectorAll("button").forEach((button) => {
-    button.addEventListener("click", () => loadSample(button.dataset.slug));
-  });
-}
+  state.activeSlug = slug;
+  renderDatasetList();
+  setStatus("Loading dataset file");
 
-function renderBenchmarkSetup() {
-  const qa = activeBenchmark();
-  if (!$("benchmarkQuestions")) return;
-  state.benchmark = null;
-  $("benchmarkCount").textContent = qa.length;
-  $("benchmarkStatus").textContent = `0/${qa.length}`;
-  $("benchmarkBoard").classList.add("is-hidden");
-  $("benchmarkBoard").innerHTML = "";
-  $("benchmarkQuestions").innerHTML = qa
-    .map(
-      (item, index) => `
-        <button type="button" data-question="${escapeHtml(item.question)}">
-          <strong>Q${index + 1}</strong>
-          <span>${escapeHtml(item.type)}</span>
-          <small>${escapeHtml(item.question)}</small>
-        </button>
-      `
-    )
-    .join("");
-  $("benchmarkQuestions").querySelectorAll("button").forEach((button) => {
-    button.addEventListener("click", () => {
-      $("question").value = button.dataset.question;
-      runQuery();
-    });
-  });
-  renderPrepRail("ready");
-}
-
-function renderPrepRail(status) {
-  if (!$("prepRail")) return;
-  const labels = [
-    ["bm25", "BM25"],
-    ["vector", "Vector"],
-    ["hybrid", "Hybrid"],
-    ["memory", "Memory"],
-    ["graph", "Graph"],
-  ];
-  $("prepRail").innerHTML = labels
-    .map(([method, label]) => `<span class="prep-chip prep-chip--${status}"><i class="method-icon method-icon--${method}">${methodIcon(method)}</i>${label}</span>`)
-    .join("");
-}
-
-function renderQuestionBank() {
-  $("questionBank").innerHTML = activeQuestions()
-    .map((question) => `<button type="button" data-question="${escapeHtml(question)}">${escapeHtml(question)}</button>`)
-    .join("");
-  $("questionBank").querySelectorAll("button").forEach((button) => {
-    button.addEventListener("click", () => {
-      $("question").value = button.dataset.question;
-      runQuery();
-    });
-  });
-}
-
-async function refreshDemos() {
   try {
-    const data = await api("/api/demos");
-    state.demos = (data.demos?.length ? data.demos : hostedDemos).map(withBenchmark);
+    const file = await fetchDatasetFile(slug);
+    state.activeFile = file;
+    renderDatasetDashboard(demo, file);
+    window.location.hash = slug;
+    setStatus("Dataset loaded");
+  } catch (error) {
+    $("datasetView").innerHTML = `<div class="empty-state"><h2>${escapeHtml(error.message)}</h2></div>`;
+    setStatus("Dataset load failed");
+  }
+}
+
+async function fetchDatasetFile(slug) {
+  try {
+    const payload = await api(`/api/dataset/file?slug=${encodeURIComponent(slug)}`);
+    if (payload.text) return normalizeFilePayload(slug, payload);
   } catch {
-    state.demos = hostedDemos.map(withBenchmark);
+    // The hosted API may still be on the previous function version; browser fallback keeps downloads working.
   }
-  if (!state.activeDemoSlug && state.demos.length) {
-    state.activeDemoSlug = state.demos[0].slug;
-  }
-  renderDemos();
-  renderQuestionBank();
-  renderBenchmarkSetup();
-  renderEdaDashboard();
+
+  const text = datasetFiles[slug];
+  if (!text) throw new Error("Dataset file is unavailable.");
+  return normalizeFilePayload(slug, { text });
 }
 
-function renderResults(response) {
-  state.response = response;
-  state.selectedMethod = response.results[0]?.method || "";
-  $("emptyState").classList.add("is-hidden");
-  $("recommendationBand").classList.remove("is-hidden");
-  $("resultLayout").classList.remove("is-hidden");
-  $("recommendedLabel").textContent = response.recommended_label;
-  $("recommendedReason").textContent = response.recommended_reason;
-  $("queryType").textContent = response.query_type;
-  renderMethodList();
-  renderSelectedMethod();
-  renderComparisonCards();
+function normalizeFilePayload(slug, payload) {
+  const demo = localBySlug.get(slug);
+  return {
+    slug,
+    title: payload.title || demo?.title || slug,
+    fileName: payload.file_name || `${slug}.md`,
+    mime: payload.mime || "text/markdown",
+    text: String(payload.text || ""),
+  };
 }
 
-function renderMethodList() {
-  const response = state.response;
-  if (!response) return;
-  $("methodColumn").innerHTML = response.results
-    .map((result) => {
-      const active = result.method === state.selectedMethod ? " is-active" : "";
-      const icon = methodIcon(result.method);
+function renderDatasetDashboard(demo, file) {
+  const analysis = analyzeText(file.text);
+  const dataset = demo.dataset || {};
+  const description = demo.profile?.focus || demo.description || "Prepared dataset.";
+
+  $("datasetView").innerHTML = `
+    <article class="eda-shell">
+      <header class="eda-head">
+        <div>
+          <span class="section-kicker">${escapeHtml(demo.profile?.kind || "Demo corpus")}</span>
+          <h2>${escapeHtml(demo.title)}</h2>
+          <p>${escapeHtml(description)}</p>
+        </div>
+        <button type="button" class="download-button" id="downloadDataset">Download .md</button>
+      </header>
+
+      <section class="stat-grid">
+        ${statCard("Documents", dataset.documents || 1)}
+        ${statCard("Chunks", dataset.chunks || analysis.paragraphs)}
+        ${statCard("Entities", dataset.entities || 0)}
+        ${statCard("Relations", dataset.relations || 0)}
+        ${statCard("Words", analysis.words)}
+      </section>
+
+      <section class="eda-grid">
+        <div class="analysis-panel">
+          <div class="section-title">
+            <h3>Content Profile</h3>
+            <span class="section-kicker">${formatNumber(analysis.characters)} chars</span>
+          </div>
+          <div class="summary-list">
+            ${summaryRow("Source", demo.source || dataset.source || "demo")}
+            ${summaryRow("File", file.fileName)}
+            ${summaryRow("Structure", `${analysis.headings.length} headings, ${analysis.paragraphs} paragraphs, ${analysis.sentences} sentences`)}
+            ${summaryRow("Vocabulary", `${formatNumber(analysis.uniqueTerms)} unique indexed terms`)}
+            ${summaryRow("Avg chunk", `${dataset.avg_chunk_tokens || estimateAvgTokens(analysis)} tokens`)}
+          </div>
+        </div>
+
+        <div class="analysis-panel">
+          <div class="section-title">
+            <h3>Top Terms</h3>
+            <span class="section-kicker">frequency</span>
+          </div>
+          <div class="term-list">
+            ${renderTerms(analysis.topTerms)}
+          </div>
+        </div>
+      </section>
+
+      <section class="file-panel">
+        <div class="file-toolbar">
+          <div class="section-title">
+            <h3>Dataset File</h3>
+          </div>
+          <span class="file-name">${escapeHtml(file.fileName)}</span>
+        </div>
+        <pre class="file-preview">${escapeHtml(file.text)}</pre>
+      </section>
+    </article>
+  `;
+
+  $("downloadDataset").addEventListener("click", () => downloadDataset(file));
+}
+
+function analyzeText(text) {
+  const words = tokenize(text);
+  const indexedWords = words.filter((word) => !stopwords.has(word) && word.length > 2);
+  const counts = indexedWords.reduce((map, word) => {
+    map.set(word, (map.get(word) || 0) + 1);
+    return map;
+  }, new Map());
+  const topTerms = [...counts.entries()]
+    .sort((left, right) => right[1] - left[1] || left[0].localeCompare(right[0]))
+    .slice(0, 8)
+    .map(([term, count]) => ({ term, count }));
+
+  return {
+    characters: text.length,
+    headings: text
+      .split(/\n+/)
+      .filter((line) => line.trim().startsWith("#"))
+      .map((line) => line.replace(/^#+\s*/, "").trim()),
+    paragraphs: text.split(/\n\s*\n/).filter((block) => block.trim()).length,
+    sentences: text.split(/[.!?]+/).filter((sentence) => sentence.trim().length > 8).length,
+    topTerms,
+    uniqueTerms: new Set(indexedWords).size,
+    words: words.length,
+  };
+}
+
+function tokenize(text) {
+  return [...text.toLowerCase().matchAll(/[a-z][a-z0-9-]{1,}/g)].map((match) => match[0]);
+}
+
+function statCard(label, value) {
+  return `
+    <div class="stat-box">
+      <strong>${escapeHtml(formatNumber(value))}</strong>
+      <span>${escapeHtml(label)}</span>
+    </div>
+  `;
+}
+
+function summaryRow(label, value) {
+  return `
+    <div class="summary-row">
+      <span>${escapeHtml(label)}</span>
+      <strong>${escapeHtml(value)}</strong>
+    </div>
+  `;
+}
+
+function renderTerms(terms) {
+  if (!terms.length) return `<div class="summary-row"><strong>No indexed terms</strong></div>`;
+  const max = Math.max(...terms.map((item) => item.count), 1);
+  return terms
+    .map((item) => {
+      const width = Math.max(8, Math.round((item.count / max) * 100));
       return `
-        <button type="button" class="method-row${active}" data-method="${result.method}">
-          <span class="method-icon method-icon--${result.method}">${icon}</span>
-          <span><strong>${escapeHtml(result.label)}</strong><small>${result.latency_ms.toFixed(2)} ms</small></span>
-          <span class="score-wrap"><span>${result.score.toFixed(1)}</span><i style="width:${Math.max(2, Math.min(100, result.score))}%"></i></span>
-        </button>
+        <div class="term-row">
+          <span>${escapeHtml(item.term)}</span>
+          <i><b style="width:${width}%"></b></i>
+          <em>${item.count}</em>
+        </div>
       `;
     })
     .join("");
-  $("methodColumn").querySelectorAll("button").forEach((button) => {
-    button.addEventListener("click", () => {
-      state.selectedMethod = button.dataset.method;
-      renderMethodList();
-      renderSelectedMethod();
-    });
-  });
 }
 
-function renderComparisonCards() {
-  const response = state.response;
-  if (!response) return;
-  $("comparisonStrip").classList.remove("is-hidden");
-  const sorted = orderResults(response.results);
-  $("comparisonCards").innerHTML = sorted
-    .map(
-      (result) => `
-        <article class="comparison-card comparison-card--${result.method}">
-          <div class="comparison-head">
-            <span class="method-icon method-icon--${result.method}">${methodIcon(result.method)}</span>
-            <div>
-              <strong>${escapeHtml(result.label)}</strong>
-              <small>${result.latency_ms.toFixed(2)} ms</small>
-            </div>
-          </div>
-          <div class="metric-row">
-            <span><b>${result.score.toFixed(1)}</b><small>Score</small></span>
-            <span><b>${result.evidence.length}</b><small>Evidence</small></span>
-            <span><b>${Math.round(result.diagnostics?.top_raw_score || 0)}</b><small>Raw</small></span>
-          </div>
-          <p>${escapeHtml(compactText(result.answer, 220))}</p>
-        </article>
-      `
-    )
-    .join("");
+function estimateAvgTokens(analysis) {
+  return Math.max(1, Math.round(analysis.words / Math.max(1, analysis.paragraphs)));
 }
 
-function renderSelectedMethod() {
-  const response = state.response;
-  if (!response) return;
-  const selected = response.results.find((result) => result.method === state.selectedMethod) || response.results[0];
-  if (!selected) return;
-
-  $("methodDetail").innerHTML = `
-    <div class="method-detail-head">
-      <div>
-        <span>${escapeHtml(selected.label)}</span>
-        <h2>${selected.score.toFixed(1)} score</h2>
-      </div>
-      <div class="detail-icon">${methodIcon(selected.method)}</div>
-    </div>
-    <p class="answer">${escapeHtml(selected.answer)}</p>
-    <div class="tag-columns">
-      ${tagList("Strengths", selected.strengths, "good")}
-      ${tagList("Limits", selected.limitations, "warn")}
-    </div>
-    <div class="evidence-list">
-      ${selected.evidence.map(renderEvidence).join("") || "<p class='muted'>No evidence retrieved.</p>"}
-    </div>
-  `;
+function downloadDataset(file) {
+  const blob = new Blob([file.text], { type: `${file.mime};charset=utf-8` });
+  const url = URL.createObjectURL(blob);
+  const link = document.createElement("a");
+  link.href = url;
+  link.download = file.fileName;
+  document.body.appendChild(link);
+  link.click();
+  link.remove();
+  URL.revokeObjectURL(url);
 }
 
-function renderEvidence(item) {
-  return `
-    <article class="evidence-item">
-      <div><strong>Chunk ${item.position + 1}</strong><span>${escapeHtml(item.reason)}</span></div>
-      <p>${escapeHtml(item.text)}</p>
-      <div class="entity-row">
-        ${item.entities.slice(0, 6).map((entity) => `<span>${escapeHtml(entity)}</span>`).join("")}
-      </div>
-    </article>
-  `;
+function formatNumber(value) {
+  return Number(value || 0).toLocaleString("en-US");
 }
 
-function orderResults(results) {
-  return [...results].sort((left, right) => METHOD_ORDER.indexOf(left.method) - METHOD_ORDER.indexOf(right.method));
-}
-
-function tagList(title, items, tone) {
-  return `
-    <div class="tag-list tag-list--${tone}">
-      <strong>${title}</strong>
-      ${items.map((item) => `<span>${escapeHtml(item)}</span>`).join("")}
-    </div>
-  `;
-}
-
-function methodIcon(method) {
-  return {
-    bm25: "⌕",
-    vector: "✦",
-    hybrid: "▦",
-    memory: "◎",
-    graph: "◇",
-  }[method] || "•";
-}
-
-async function refreshDataset() {
-  const data = await api("/api/dataset");
-  renderDataset(data.dataset);
-}
-
-async function refreshMemory() {
-  const data = await api(`/api/memory/${SESSION_ID}`);
-  renderMemory(data.memories);
-}
-
-async function runQuery() {
-  setBusy(true);
-  setStatus("Running retrieval engines");
-  try {
-    const data = await api("/api/query", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ question: $("question").value, session_id: SESSION_ID, dataset_id: state.datasetId || undefined }),
-    });
-    renderDataset(data.dataset);
-    renderResults(data);
-    setStatus("Comparison ready");
-  } catch (error) {
-    setStatus(error.message);
-  } finally {
-    setBusy(false);
-  }
-}
-
-async function runBenchmark() {
-  const qa = activeBenchmark();
-  if (!qa.length) return;
-  setBusy(true);
-  renderPrepRail("running");
-  $("benchmarkBoard").classList.remove("is-hidden");
-  $("benchmarkBoard").innerHTML = "<div class=\"benchmark-loading\">Preparing benchmark...</div>";
-  try {
-    const runs = [];
-    for (let index = 0; index < qa.length; index += 1) {
-      setStatus(`Benchmark ${index + 1}/${qa.length}`);
-      $("benchmarkStatus").textContent = `${index + 1}/${qa.length}`;
-      const response = await api("/api/query", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ question: qa[index].question, session_id: SESSION_ID, dataset_id: state.datasetId || undefined }),
-      });
-      runs.push({ qa: qa[index], response });
-    }
-    const summary = summarizeBenchmark(runs);
-    state.benchmark = summary;
-    renderBenchmarkResults(summary);
-    $("benchmarkStatus").textContent = `${qa.length}/${qa.length}`;
-    setStatus("Benchmark ready");
-  } catch (error) {
-    $("benchmarkBoard").innerHTML = `<div class="benchmark-loading">${escapeHtml(error.message)}</div>`;
-    setStatus(error.message);
-  } finally {
-    renderPrepRail("ready");
-    setBusy(false);
-  }
-}
-
-function summarizeBenchmark(runs) {
-  const byMethod = new Map();
-  for (const method of METHOD_ORDER) {
-    byMethod.set(method, {
-      method,
-      label: "",
-      scoreTotal: 0,
-      latencyTotal: 0,
-      coverageTotal: 0,
-      evidenceTotal: 0,
-      wins: 0,
-      rankTotal: 0,
-      samples: [],
-    });
-  }
-  for (const run of runs) {
-    orderResults(run.response.results).forEach((result) => {
-      const bucket = byMethod.get(result.method);
-      const coverage = termCoverage(result, run.qa);
-      const rank = run.response.results.findIndex((item) => item.method === result.method) + 1;
-      bucket.label = result.label;
-      bucket.scoreTotal += result.score;
-      bucket.latencyTotal += result.latency_ms;
-      bucket.coverageTotal += coverage.percent;
-      bucket.evidenceTotal += result.evidence.length;
-      bucket.rankTotal += rank;
-      bucket.wins += run.response.recommended_method === result.method ? 1 : 0;
-      bucket.samples.push({
-        question: run.qa.question,
-        expected: run.qa.expected,
-        answer: result.answer,
-        coverage: coverage.percent,
-        matched: coverage.matched,
-      });
-    });
-  }
-  const questionCount = Math.max(1, runs.length);
-  return {
-    questionCount,
-    dataset: runs[0]?.response.dataset,
-    methods: [...byMethod.values()].map((item) => {
-      const evidenceQuality = Math.min(100, (item.evidenceTotal / questionCount / 4) * 100);
-      const accuracy = item.coverageTotal / questionCount;
-      const score = item.scoreTotal / questionCount;
-      return {
-        ...item,
-        accuracy,
-        avgScore: score,
-        avgLatency: item.latencyTotal / questionCount,
-        avgEvidence: item.evidenceTotal / questionCount,
-        avgRank: item.rankTotal / questionCount,
-        confidence: Math.round(accuracy * 0.55 + score * 0.35 + evidenceQuality * 0.1),
-      };
-    }),
-    runs,
-  };
-}
-
-function termCoverage(result, qa) {
-  const haystack = normalizeForMatch([result.answer, ...result.evidence.map((item) => item.text)].join(" "));
-  const matched = qa.terms.filter((term) => {
-    const normalized = normalizeForMatch(term);
-    if (haystack.includes(normalized)) return true;
-    return normalized.split(" ").filter(Boolean).every((piece) => haystack.includes(piece));
-  });
-  return {
-    matched,
-    percent: qa.terms.length ? Math.round((matched.length / qa.terms.length) * 100) : 0,
-  };
-}
-
-function renderBenchmarkResults(summary) {
-  const best = [...summary.methods].sort((left, right) => right.confidence - left.confidence)[0];
-  $("benchmarkBoard").classList.remove("is-hidden");
-  $("benchmarkBoard").innerHTML = `
-    <div class="benchmark-summary">
-      <span><b>${summary.questionCount}</b><small>Gold QA</small></span>
-      <span><b>${escapeHtml(best.label || best.method)}</b><small>Best method</small></span>
-      <span><b>${best.confidence}%</b><small>Confidence</small></span>
-    </div>
-    <div class="benchmark-cards">
-      ${summary.methods.map(renderBenchmarkCard).join("")}
-    </div>
-    <div class="qa-matrix">
-      ${summary.runs.map(renderQaRow).join("")}
-    </div>
-  `;
-}
-
-function renderBenchmarkCard(method) {
-  return `
-    <article class="benchmark-card benchmark-card--${method.method}">
-      <div class="benchmark-card-head">
-        <span class="method-icon method-icon--${method.method}">${methodIcon(method.method)}</span>
-        <div>
-          <strong>${escapeHtml(method.label || method.method)}</strong>
-          <small>${method.wins} wins / avg rank ${method.avgRank.toFixed(1)}</small>
-        </div>
-      </div>
-      <div class="benchmark-score">
-        <strong>${Math.round(method.confidence)}%</strong>
-        <span>Benchmark</span>
-      </div>
-      <div class="bar-list">
-        ${metricBar("Accuracy", method.accuracy)}
-        ${metricBar("Score", method.avgScore)}
-        ${metricBar("Evidence", Math.min(100, (method.avgEvidence / 4) * 100))}
-      </div>
-      <div class="benchmark-stats">
-        <span><b>${method.avgLatency.toFixed(1)}</b><small>ms</small></span>
-        <span><b>${method.avgEvidence.toFixed(1)}</b><small>evidence</small></span>
-        <span><b>${Math.round(method.accuracy)}%</b><small>coverage</small></span>
-      </div>
-      <p>${escapeHtml(compactText(method.samples[0]?.answer || "", 180))}</p>
-    </article>
-  `;
-}
-
-function metricBar(label, value) {
-  const width = Math.max(2, Math.min(100, value));
-  return `<div><span>${label}</span><i><b style="width:${width}%"></b></i><em>${Math.round(value)}%</em></div>`;
-}
-
-function renderQaRow(run, index) {
-  const best = run.response.results[0];
-  return `
-    <article class="qa-row">
-      <div>
-        <strong>Q${index + 1}</strong>
-        <span>${escapeHtml(run.qa.type)}</span>
-      </div>
-      <p>${escapeHtml(run.qa.question)}</p>
-      <small>${escapeHtml(run.qa.expected)}</small>
-      <b>${escapeHtml(best.label)}</b>
-    </article>
-  `;
-}
-
-async function loadSample(slug = state.activeDemoSlug) {
-  setBusy(true);
-  setStatus("Loading demo dataset");
-  try {
-    const demo = state.demos.find((item) => item.slug === slug);
-    if (API_BASE && demo?.dataset) {
-      state.activeDemoSlug = demo.slug;
-      renderDataset(demo.dataset);
-      renderQuestionBank();
-      renderBenchmarkSetup();
-      const firstQuestion = activeQuestions()[0];
-      if (firstQuestion) $("question").value = firstQuestion;
-      resetResults();
-      setStatus("Demo selected");
-      return;
-    }
-    const data = await api("/api/dataset/sample", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ slug }),
-    });
-    renderDataset(data.dataset);
-    renderQuestionBank();
-    renderBenchmarkSetup();
-    const firstQuestion = activeQuestions()[0];
-    if (firstQuestion) $("question").value = firstQuestion;
-    resetResults();
-    setStatus("Demo indexed");
-  } catch (error) {
-    setStatus(error.message);
-  } finally {
-    setBusy(false);
-  }
-}
-
-function resetResults() {
-  state.response = null;
-  $("recommendationBand").classList.add("is-hidden");
-  $("comparisonStrip").classList.add("is-hidden");
-  $("resultLayout").classList.add("is-hidden");
-  $("emptyState").classList.remove("is-hidden");
-}
-
-async function addMemory() {
-  setBusy(true);
-  setStatus("Saving memory");
-  try {
-    const data = await api("/api/memory", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ session_id: SESSION_ID, text: $("memoryText").value }),
-    });
-    renderMemory(data.memories);
-    setStatus("Memory saved");
-  } catch (error) {
-    setStatus(error.message);
-  } finally {
-    setBusy(false);
-  }
+function setStatus(message) {
+  $("status").textContent = message;
 }
 
 function escapeHtml(value) {
-  return String(value)
-    .replaceAll("&", "&amp;")
-    .replaceAll("<", "&lt;")
-    .replaceAll(">", "&gt;")
-    .replaceAll('"', "&quot;")
-    .replaceAll("'", "&#039;");
+  return String(value ?? "")
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;")
+    .replace(/'/g, "&#039;");
 }
-
-function normalizeForMatch(value) {
-  return String(value).toLowerCase().replace(/[^a-z0-9]+/g, " ").replace(/\s+/g, " ").trim();
-}
-
-function compactText(value, limit) {
-  const text = String(value || "").replace(/\s+/g, " ").trim();
-  return text.length <= limit ? text : `${text.slice(0, limit - 1).trim()}...`;
-}
-
-document.addEventListener("DOMContentLoaded", async () => {
-  configureRuntimeMode();
-  renderQuestionBank();
-  $("runQuery").addEventListener("click", runQuery);
-  $("loadSample").addEventListener("click", () => loadSample());
-  $("runBenchmark").addEventListener("click", runBenchmark);
-  $("addMemory").addEventListener("click", addMemory);
-  await refreshDemos();
-  await refreshDataset();
-  renderQuestionBank();
-  await refreshMemory();
-});

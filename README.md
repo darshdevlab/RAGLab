@@ -17,13 +17,12 @@ Built-in demo datasets:
 - Northwind Incident Runbook: SEV terms, service dependencies, and recovery playbooks.
 - AtlasDesk Support KB: refund, retention, plan, and memory-biased support policies.
 
-Benchmark mode:
+Current public UI:
 
-- Each demo dataset has prepared gold question/answer fixtures in the browser bundle.
-- The opening screen shows a dataset EDA dashboard with corpus counts, available datasets, profile stats, and sample gold questions.
-- Benchmark runs the same prepared questions through all five RAG methods using the live `/api/query` endpoint.
-- The UI compares methods horizontally with coverage, average score, latency, evidence count, wins, and rank.
-- Accuracy is shown as gold-answer term coverage, not as a claim of human-graded factual correctness.
+- The first screen lists only the prepared dataset names.
+- Clicking a dataset opens its EDA dashboard with corpus counts, text profile, top terms, and the loaded markdown file.
+- Each dataset file can be downloaded as `.md` from the browser.
+- Query, benchmark, upload, memory, and method-comparison controls are hidden for now and can be added back one by one.
 
 The local version avoids npm, pip, and external LLM APIs so the product behavior can be verified first. The hosted version uses Supabase for seeded demo documents, chunks, pgvector embeddings, keyword search, demo memory, entities, and relations.
 
@@ -67,6 +66,8 @@ http://127.0.0.1:8787
 GET  /api/health
 GET  /api/demos
 GET  /api/dataset
+GET  /api/dataset/file?slug={demo_slug}
+GET  /api/dataset/download?slug={demo_slug}
 POST /api/dataset/sample
 POST /api/query
 GET  /api/memory/{session_id}

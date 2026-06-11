@@ -13,6 +13,7 @@ from urllib.parse import parse_qs, unquote, urlparse
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 
+from raglab.demos import get_demo
 from raglab.engine import RagLabEngine
 
 
@@ -33,6 +34,24 @@ class Handler(BaseHTTPRequestHandler):
             return
         if parsed.path == "/api/demos":
             self._json({"demos": engine.demos()})
+            return
+        if parsed.path == "/api/dataset/file":
+            slug = parse_qs(parsed.query).get("slug", [""])[0]
+            demo = get_demo(slug or None)
+            self._json(
+                {
+                    "slug": demo.slug,
+                    "title": demo.title,
+                    "file_name": f"{demo.slug}.md",
+                    "mime": "text/markdown",
+                    "text": demo.text,
+                }
+            )
+            return
+        if parsed.path == "/api/dataset/download":
+            slug = parse_qs(parsed.query).get("slug", [""])[0]
+            demo = get_demo(slug or None)
+            self._download_text(file_name=f"{demo.slug}.md", text=demo.text)
             return
         if parsed.path == "/api/dataset":
             self._json({"dataset": asdict(engine.stats())})
@@ -100,6 +119,16 @@ class Handler(BaseHTTPRequestHandler):
         body = json.dumps(payload, ensure_ascii=False).encode("utf-8")
         self.send_response(status)
         self.send_header("Content-Type", "application/json; charset=utf-8")
+        self.send_header("Content-Length", str(len(body)))
+        self.send_header("Cache-Control", "no-store")
+        self.end_headers()
+        self.wfile.write(body)
+
+    def _download_text(self, file_name: str, text: str) -> None:
+        body = text.encode("utf-8")
+        self.send_response(HTTPStatus.OK)
+        self.send_header("Content-Type", "text/markdown; charset=utf-8")
+        self.send_header("Content-Disposition", f'attachment; filename="{file_name}"')
         self.send_header("Content-Length", str(len(body)))
         self.send_header("Cache-Control", "no-store")
         self.end_headers()
