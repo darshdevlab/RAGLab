@@ -101,6 +101,8 @@ button:disabled {
 .workspace-grid > *,
 .result-layout > *,
 .query-panel,
+.benchmark-panel,
+.comparison-strip,
 .recommendation-band,
 .method-detail {
   min-width: 0;
@@ -108,6 +110,8 @@ button:disabled {
 
 .panel-block,
 .query-panel,
+.benchmark-panel,
+.comparison-strip,
 .recommendation-band,
 .method-column,
 .method-detail,
@@ -312,6 +316,320 @@ button:disabled {
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
+}
+
+.benchmark-panel {
+  display: grid;
+  gap: 12px;
+  padding: 14px;
+}
+
+.benchmark-head,
+.benchmark-actions,
+.comparison-head,
+.benchmark-card-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.benchmark-head h2 {
+  margin: 2px 0 0;
+  font-size: 18px;
+  letter-spacing: 0;
+}
+
+.benchmark-head span,
+.benchmark-count span,
+.benchmark-actions span {
+  color: #61706a;
+  font-size: 12px;
+  font-weight: 760;
+  text-transform: uppercase;
+}
+
+.benchmark-actions .run-button {
+  width: 150px;
+}
+
+.prep-rail,
+.benchmark-questions,
+.comparison-cards,
+.benchmark-cards {
+  display: flex;
+  gap: 8px;
+  min-width: 0;
+  overflow-x: auto;
+  padding-bottom: 3px;
+}
+
+.prep-chip {
+  display: inline-flex;
+  flex: 0 0 auto;
+  align-items: center;
+  gap: 7px;
+  border: 1px solid #d2d9d4;
+  border-radius: 999px;
+  background: #f8faf7;
+  color: #263730;
+  padding: 5px 9px 5px 5px;
+  font-size: 12px;
+  font-weight: 760;
+}
+
+.prep-chip .method-icon {
+  width: 24px;
+  height: 24px;
+  border-radius: 999px;
+  font-size: 13px;
+}
+
+.prep-chip--running {
+  border-color: #f0bd56;
+  background: #fff8e8;
+}
+
+.benchmark-questions button {
+  display: grid;
+  flex: 0 0 240px;
+  min-height: 82px;
+  grid-template-columns: auto 1fr;
+  align-content: start;
+  gap: 5px 8px;
+  border: 1px solid #d0d8d3;
+  border-radius: 7px;
+  background: #fbfcfa;
+  color: #263730;
+  padding: 9px;
+  text-align: left;
+}
+
+.benchmark-questions strong,
+.qa-row strong {
+  color: #14695e;
+  font-size: 13px;
+}
+
+.benchmark-questions span,
+.qa-row span {
+  color: #8b4bb3;
+  font-size: 12px;
+  font-weight: 760;
+  text-transform: uppercase;
+}
+
+.benchmark-questions small {
+  grid-column: 1 / -1;
+  color: #46564f;
+  line-height: 1.35;
+}
+
+.benchmark-count {
+  display: inline-flex;
+  width: max-content;
+  align-items: baseline;
+  gap: 6px;
+  border: 1px solid #d7ded9;
+  border-radius: 999px;
+  background: #f8faf7;
+  padding: 6px 10px;
+}
+
+.benchmark-count strong {
+  color: #17342f;
+}
+
+.benchmark-board {
+  display: grid;
+  gap: 12px;
+}
+
+.benchmark-loading {
+  border: 1px solid #d7ded9;
+  border-radius: 7px;
+  background: #fbfcfa;
+  padding: 12px;
+  color: #46564f;
+  font-weight: 760;
+}
+
+.benchmark-summary {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 8px;
+}
+
+.benchmark-summary span,
+.benchmark-stats span,
+.metric-row span {
+  display: grid;
+  gap: 3px;
+  border: 1px solid #d7ded9;
+  border-radius: 7px;
+  background: #f8faf7;
+  padding: 9px;
+}
+
+.benchmark-summary b,
+.benchmark-stats b,
+.metric-row b {
+  color: #17342f;
+  font-size: 17px;
+}
+
+.benchmark-summary small,
+.benchmark-stats small,
+.metric-row small {
+  color: #61706a;
+  font-size: 11px;
+  text-transform: uppercase;
+}
+
+.benchmark-card,
+.comparison-card {
+  flex: 0 0 290px;
+  border: 1px solid #d0d8d3;
+  border-radius: 8px;
+  background: #ffffff;
+  padding: 12px;
+}
+
+.benchmark-card {
+  display: grid;
+  gap: 11px;
+}
+
+.benchmark-card-head {
+  justify-content: flex-start;
+}
+
+.benchmark-card-head strong,
+.comparison-head strong {
+  display: block;
+  color: #17251f;
+}
+
+.benchmark-card-head small,
+.comparison-head small {
+  color: #61706a;
+  font-size: 12px;
+}
+
+.benchmark-score {
+  display: flex;
+  align-items: end;
+  gap: 7px;
+}
+
+.benchmark-score strong {
+  color: #14695e;
+  font-size: 34px;
+  line-height: 0.95;
+}
+
+.benchmark-score span {
+  color: #61706a;
+  font-size: 12px;
+  font-weight: 760;
+  text-transform: uppercase;
+}
+
+.bar-list {
+  display: grid;
+  gap: 7px;
+}
+
+.bar-list div {
+  display: grid;
+  grid-template-columns: 68px 1fr 42px;
+  align-items: center;
+  gap: 8px;
+  color: #46564f;
+  font-size: 12px;
+}
+
+.bar-list i {
+  display: block;
+  height: 8px;
+  border-radius: 999px;
+  background: #edf0eb;
+  overflow: hidden;
+}
+
+.bar-list b {
+  display: block;
+  height: 100%;
+  border-radius: inherit;
+  background: #14695e;
+}
+
+.bar-list em {
+  color: #273630;
+  font-style: normal;
+  font-weight: 760;
+  text-align: right;
+}
+
+.benchmark-stats,
+.metric-row {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 6px;
+}
+
+.benchmark-card p,
+.comparison-card p {
+  margin: 0;
+  color: #46564f;
+  font-size: 13px;
+  line-height: 1.45;
+}
+
+.qa-matrix {
+  display: grid;
+  gap: 8px;
+}
+
+.qa-row {
+  display: grid;
+  grid-template-columns: minmax(64px, 86px) 1.2fr 1fr minmax(120px, 180px);
+  gap: 10px;
+  align-items: start;
+  border: 1px solid #d7ded9;
+  border-radius: 7px;
+  background: #fbfcfa;
+  padding: 10px;
+}
+
+.qa-row div {
+  display: grid;
+  gap: 3px;
+}
+
+.qa-row p,
+.qa-row small {
+  margin: 0;
+  color: #46564f;
+  line-height: 1.35;
+}
+
+.qa-row b {
+  color: #17342f;
+  font-size: 13px;
+}
+
+.comparison-strip {
+  padding: 10px;
+}
+
+.comparison-card {
+  display: grid;
+  gap: 10px;
+}
+
+.comparison-head {
+  justify-content: flex-start;
 }
 
 .recommendation-band {
@@ -567,6 +885,7 @@ button:disabled {
   }
 
   .topbar,
+  .benchmark-head,
   .recommendation-band {
     align-items: flex-start;
     flex-direction: column;
@@ -583,6 +902,26 @@ button:disabled {
 
   .run-button {
     width: 100%;
+  }
+
+  .benchmark-actions {
+    width: 100%;
+    align-items: stretch;
+    flex-direction: column;
+  }
+
+  .benchmark-actions .run-button {
+    width: 100%;
+  }
+
+  .benchmark-summary,
+  .qa-row {
+    grid-template-columns: 1fr;
+  }
+
+  .benchmark-card,
+  .comparison-card {
+    flex-basis: min(86vw, 310px);
   }
 
   .method-row {

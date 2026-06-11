@@ -4,8 +4,8 @@
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <title>RAGLab</title>
-    <link rel="stylesheet" href="styles.css?v=20260611-no-upload" />
-    <script src="app.js?v=20260611-no-upload" defer></script>
+    <link rel="stylesheet" href="styles.css?v=20260611-benchmark" />
+    <script src="app.js?v=20260611-benchmark" defer></script>
   </head>
   <body>
     <main class="app-shell">
@@ -57,6 +57,23 @@
             <div class="question-bank" id="questionBank"></div>
           </section>
 
+          <section class="benchmark-panel">
+            <div class="benchmark-head">
+              <div>
+                <span>Gold QA</span>
+                <h2>Benchmark</h2>
+              </div>
+              <div class="benchmark-actions">
+                <span id="benchmarkStatus">0/0</span>
+                <button class="run-button" type="button" id="runBenchmark">Run benchmark</button>
+              </div>
+            </div>
+            <div class="prep-rail" id="prepRail"></div>
+            <div class="benchmark-questions" id="benchmarkQuestions"></div>
+            <div class="benchmark-count"><strong id="benchmarkCount">0</strong><span>prepared QA pairs</span></div>
+            <div class="benchmark-board is-hidden" id="benchmarkBoard"></div>
+          </section>
+
           <section class="recommendation-band is-hidden" id="recommendationBand">
             <div>
               <span>Recommended</span>
@@ -64,6 +81,10 @@
               <p id="recommendedReason"></p>
             </div>
             <div class="query-type" id="queryType">mixed</div>
+          </section>
+
+          <section class="comparison-strip is-hidden" id="comparisonStrip">
+            <div class="comparison-cards" id="comparisonCards"></div>
           </section>
 
           <section class="result-layout is-hidden" id="resultLayout">

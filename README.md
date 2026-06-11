@@ -17,6 +17,13 @@ Built-in demo datasets:
 - Northwind Incident Runbook: SEV terms, service dependencies, and recovery playbooks.
 - AtlasDesk Support KB: refund, retention, plan, and memory-biased support policies.
 
+Benchmark mode:
+
+- Each demo dataset has prepared gold question/answer fixtures in the browser bundle.
+- Benchmark runs the same prepared questions through all five RAG methods using the live `/api/query` endpoint.
+- The UI compares methods horizontally with coverage, average score, latency, evidence count, wins, and rank.
+- Accuracy is shown as gold-answer term coverage, not as a claim of human-graded factual correctness.
+
 The local version avoids npm, pip, and external LLM APIs so the product behavior can be verified first. The hosted version uses Supabase for seeded demo documents, chunks, pgvector embeddings, keyword search, demo memory, entities, and relations.
 
 ## Live Architecture
@@ -36,7 +43,7 @@ The local version avoids npm, pip, and external LLM APIs so the product behavior
 - The hosted `raglab` Edge Function uses Supabase runtime secrets server-side and is intentionally public because there is no auth for the portfolio demo.
 - Public write paths are disabled in the hosted function: `POST /api/dataset/text` and `POST /api/memory` return `403`.
 - Public queries are restricted to the four seeded demo dataset IDs and do not insert run logs, result rows, evidence rows, uploads, or memories.
-- The UI is demo-only and does not show upload controls.
+- The UI is demo-only, shows prepared benchmark datasets, and does not show upload controls.
 
 ## Run Locally
 
