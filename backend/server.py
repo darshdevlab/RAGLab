@@ -9,7 +9,7 @@ from dataclasses import asdict
 from http import HTTPStatus
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
-from urllib.parse import unquote, urlparse
+from urllib.parse import parse_qs, unquote, urlparse
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 
@@ -31,6 +31,9 @@ class Handler(BaseHTTPRequestHandler):
         if parsed.path == "/api/health":
             self._json({"ok": True, "dataset": asdict(engine.stats())})
             return
+        if parsed.path == "/api/demos":
+            self._json({"demos": engine.demos()})
+            return
         if parsed.path == "/api/dataset":
             self._json({"dataset": asdict(engine.stats())})
             return
@@ -44,7 +47,9 @@ class Handler(BaseHTTPRequestHandler):
         parsed = urlparse(self.path)
         try:
             if parsed.path == "/api/dataset/sample":
-                self._json({"dataset": asdict(engine.load_sample())})
+                payload = self._read_json()
+                slug = str(payload.get("slug") or parse_qs(parsed.query).get("slug", [""])[0] or "")
+                self._json({"dataset": asdict(engine.load_demo(slug or None))})
                 return
             if parsed.path == "/api/dataset/text":
                 payload = self._read_json()

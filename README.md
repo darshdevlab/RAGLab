@@ -10,6 +10,13 @@ It runs real local retrieval engines:
 - Memory RAG with SQLite-backed session memory
 - GraphRAG with entity and relation traversal
 
+Built-in demo datasets:
+
+- RAGLab Architecture: deployment, pgvector, hybrid retrieval, and graph relationships.
+- CardioMap Trial Protocol: clinical abbreviations, safety thresholds, and routing.
+- Northwind Incident Runbook: SEV terms, service dependencies, and recovery playbooks.
+- AtlasDesk Support KB: refund, retention, plan, and memory-biased support policies.
+
 The local version avoids npm, pip, and external LLM APIs so the product behavior can be verified first. The hosted version uses Supabase for documents, chunks, pgvector embeddings, keyword search, memory, entities, relations, run logs, and evidence.
 
 ## Live Architecture
@@ -41,6 +48,7 @@ http://127.0.0.1:8787
 
 ```text
 GET  /api/health
+GET  /api/demos
 GET  /api/dataset
 POST /api/dataset/sample
 POST /api/dataset/text

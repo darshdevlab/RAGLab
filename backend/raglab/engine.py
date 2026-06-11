@@ -6,6 +6,7 @@ from dataclasses import asdict, dataclass
 from pathlib import Path
 
 from .chunking import DocumentChunk, chunk_plain_text
+from .demos import DEFAULT_DEMO_SLUG, get_demo, list_demo_metadata
 from .indexes import BM25Index, GraphIndex, HybridIndex, RetrievalHit, VectorIndex
 from .memory import MemoryItem, MemoryStore
 from .text import best_sentences, compact_text, tokenize
@@ -38,6 +39,7 @@ class MethodResult:
 
 @dataclass(frozen=True)
 class DatasetStats:
+    slug: str
     title: str
     source: str
     documents: int
@@ -53,6 +55,7 @@ class RagLabEngine:
         self.sample_path = sample_path
         self.memory = MemoryStore(artifact_dir / "raglab.sqlite")
         self.memory.seed_demo_memory("demo")
+        self.slug = DEFAULT_DEMO_SLUG
         self.title = "RAGLab Demo Dataset"
         self.source = str(sample_path.name)
         self.chunks: list[DocumentChunk] = []
@@ -60,17 +63,24 @@ class RagLabEngine:
         self.bm25: BM25Index | None = None
         self.hybrid: HybridIndex | None = None
         self.graph: GraphIndex | None = None
-        self.load_sample()
+        self.load_demo(DEFAULT_DEMO_SLUG)
 
     def load_sample(self) -> DatasetStats:
-        text = self.sample_path.read_text(encoding="utf-8")
-        return self.index_text(title="RAGLab Demo Dataset", source=self.sample_path.name, text=text)
+        return self.load_demo(DEFAULT_DEMO_SLUG)
 
-    def index_text(self, title: str, source: str, text: str) -> DatasetStats:
+    def demos(self) -> list[dict[str, object]]:
+        return list_demo_metadata()
+
+    def load_demo(self, slug: str | None = None) -> DatasetStats:
+        demo = get_demo(slug)
+        return self.index_text(title=demo.title, source=demo.source, text=demo.text, slug=demo.slug)
+
+    def index_text(self, title: str, source: str, text: str, slug: str = "custom") -> DatasetStats:
         clean = text.strip()
         if len(clean) < 80:
             raise ValueError("Dataset text is too short. Add at least a few paragraphs so retrieval can be compared.")
 
+        self.slug = slug
         self.title = title.strip() or "Untitled Dataset"
         self.source = source.strip() or "text input"
         self.chunks = chunk_plain_text(title=self.title, source=self.source, text=clean)
@@ -85,6 +95,7 @@ class RagLabEngine:
         token_counts = [len(chunk.tokens) for chunk in self.chunks]
         avg_chunk_tokens = statistics.mean(token_counts) if token_counts else 0.0
         return DatasetStats(
+            slug=self.slug,
             title=self.title,
             source=self.source,
             documents=1,
@@ -278,4 +289,3 @@ class RagLabEngine:
             "memory": ["Only helps when useful memories exist", "Needs user controls in production"],
             "graph": ["Entity extraction is simple in V1", "Complex graph reasoning may need Neo4j later"],
         }[method]
-

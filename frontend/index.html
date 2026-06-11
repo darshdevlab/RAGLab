@@ -22,7 +22,7 @@
           <section class="panel-block">
             <div class="block-head">
               <h2>Dataset</h2>
-              <button class="icon-button" type="button" id="loadSample" title="Reload sample">↻</button>
+              <button class="icon-button" type="button" id="loadSample" title="Reload selected demo">↻</button>
             </div>
             <div class="stat-grid">
               <div class="stat-box"><strong id="statChunks">0</strong><span>Chunks</span></div>
@@ -34,6 +34,7 @@
               <strong id="datasetTitle">No dataset</strong>
               <span id="datasetSource">Waiting</span>
             </div>
+            <div class="demo-list" id="demoList"></div>
             <input class="hidden-input" id="fileInput" type="file" accept=".txt,.md,.csv" />
             <button class="secondary-button" type="button" id="uploadButton">Upload file</button>
             <textarea class="dataset-input" id="datasetText" placeholder="Paste TXT, Markdown, or CSV content"></textarea>

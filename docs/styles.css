@@ -179,6 +179,33 @@ button:disabled {
   margin: 12px 0;
 }
 
+.demo-list {
+  display: grid;
+  gap: 7px;
+  margin: 12px 0 4px;
+}
+
+.demo-chip {
+  width: 100%;
+  min-height: 34px;
+  border: 1px solid #cbd4ce;
+  border-radius: 7px;
+  background: #f8faf7;
+  color: #273630;
+  padding: 7px 9px;
+  overflow: hidden;
+  text-align: left;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.demo-chip.is-active {
+  border-color: #14695e;
+  background: #eaf6f3;
+  color: #143d36;
+  font-weight: 760;
+}
+
 .secondary-button,
 .run-button {
   display: inline-flex;
