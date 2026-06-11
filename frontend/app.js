@@ -577,20 +577,7 @@ function renderChatIntro(demo, file, analysis, errorMessage) {
     `;
   }
 
-  return `
-    <article class="chat-message assistant-message">
-      <span class="avatar">RL</span>
-      <div class="message-bubble">
-        <h3>Dataset loaded: ${escapeHtml(demo.title)}</h3>
-        <p>I indexed ${formatNumber(state.chunks.length)} chunks from ${escapeHtml(file.fileName)}. Pick an example query or write your own prompt to compare retrieval behavior across RAG methods.</p>
-        <div class="context-strip">
-          ${miniStat(analysis.words, "Words")}
-          ${miniStat(state.chunks.length, "Chunks")}
-          ${miniStat((benchmarkQueries[demo.slug] || []).length, "Queries")}
-        </div>
-      </div>
-    </article>
-  `;
+  return "";
 }
 
 function renderQueryOptions(queries) {
@@ -598,13 +585,13 @@ function renderQueryOptions(queries) {
   return `
     <section class="query-option-panel">
       <div class="section-title">
-        <h3>Example query options</h3>
-        <span class="section-kicker">click to run</span>
+        <h3>Suggested queries</h3>
+        <span class="section-kicker">click to fill prompt</span>
       </div>
       <div class="query-grid">
         ${queries
           .map((query, index) => {
-            const active = state.selectedQuery?.text === query.text ? " is-active" : "";
+            const active = state.customPrompt === query.text ? " is-active" : "";
             return `
               <button type="button" class="query-card${active}" data-query-index="${index}">
                 <span>${escapeHtml(query.type)}</span>
@@ -648,7 +635,7 @@ function renderPromptComposer(demo) {
         placeholder="${demo ? "Ask a custom retrieval question for this dataset" : "Select a dataset first"}"
       >${escapeHtml(state.customPrompt)}</textarea>
       <div class="composer-actions">
-        <button type="button" class="download-button" id="clearQuery" ${demo && state.selectedQuery ? "" : "disabled"}>Clear</button>
+        <button type="button" class="download-button" id="clearQuery" ${demo && (state.selectedQuery || state.customPrompt) ? "" : "disabled"}>Clear</button>
         <button type="submit" class="primary-button" ${demo ? "" : "disabled"}>Run benchmark</button>
       </div>
     </form>
@@ -664,10 +651,11 @@ function bindChatEvents(demo) {
 
   $("pageView").querySelectorAll(".query-card").forEach((button) => {
     button.addEventListener("click", () => {
-      state.customPrompt = "";
-      state.selectedQuery = (benchmarkQueries[demo.slug] || [])[Number(button.dataset.queryIndex)];
+      const query = (benchmarkQueries[demo.slug] || [])[Number(button.dataset.queryIndex)];
+      state.customPrompt = query?.text || "";
+      state.selectedQuery = null;
       renderChatWorkspace();
-      scrollChatToBottom();
+      $("customPrompt")?.focus();
     });
   });
 
@@ -684,7 +672,7 @@ function bindChatEvents(demo) {
     const text = $("customPrompt").value.trim();
     if (!text) return;
     state.customPrompt = text;
-    state.selectedQuery = buildCustomQuery(text);
+    state.selectedQuery = buildBenchmarkQuery(text, demo);
     renderChatWorkspace();
     scrollChatToBottom();
   });
@@ -708,6 +696,12 @@ function normalizeFilePayload(slug, payload) {
     mime: payload.mime || "text/plain",
     text: String(payload.text || ""),
   };
+}
+
+function buildBenchmarkQuery(text, demo) {
+  const prepared = (benchmarkQueries[demo.slug] || []).find((query) => query.text === text);
+  if (prepared) return prepared;
+  return buildCustomQuery(text);
 }
 
 function buildCustomQuery(text) {
