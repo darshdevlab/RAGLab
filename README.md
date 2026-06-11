@@ -57,6 +57,18 @@ The hosted API base is:
 https://peluzzqoihjvkdtedsiz.supabase.co/functions/v1/raglab
 ```
 
+Live demo:
+
+```text
+https://darshdevlab.github.io/RAGLab/
+```
+
+GitHub repo:
+
+```text
+https://github.com/darshdevlab/RAGLab
+```
+
 The frontend automatically uses the hosted API outside localhost and keeps relative `/api` calls when run through the local Python server.
 
 ## Deployment Direction
