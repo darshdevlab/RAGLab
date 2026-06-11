@@ -4,8 +4,8 @@
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <title>RAGLab</title>
-    <link rel="stylesheet" href="styles.css?v=20260611-benchmark" />
-    <script src="app.js?v=20260611-benchmark" defer></script>
+    <link rel="stylesheet" href="styles.css?v=20260611-eda" />
+    <script src="app.js?v=20260611-eda" defer></script>
   </head>
   <body>
     <main class="app-shell">
@@ -49,6 +49,22 @@
         </aside>
 
         <section class="query-stage">
+          <section class="eda-panel">
+            <div class="eda-head">
+              <div>
+                <span>Dataset EDA</span>
+                <h2>Available datasets</h2>
+              </div>
+              <div class="eda-mode" id="edaActiveType">demo corpus</div>
+            </div>
+            <div class="eda-summary" id="edaSummary"></div>
+            <div class="eda-dataset-grid" id="edaDatasetGrid"></div>
+            <div class="eda-body">
+              <div class="eda-chart" id="edaChart"></div>
+              <div class="eda-profile" id="edaProfile"></div>
+            </div>
+          </section>
+
           <section class="query-panel">
             <div class="question-row">
               <textarea id="question">Which RAG method is safest for a mixed query about Vercel and Supabase deployment?</textarea>

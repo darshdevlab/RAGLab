@@ -20,7 +20,7 @@ class DemoDataset:
 
 RAGLAB_TEXT = """# RAGLab Demo Dataset
 
-RAGLab is a product prototype for comparing retrieval augmented generation strategies on the same dataset. The platform should help a user upload documents, ask natural language questions, inspect retrieved evidence, and see which RAG strategy works best for that dataset and query type.
+RAGLab is a product prototype for comparing retrieval augmented generation strategies on the same dataset. The platform helps a visitor choose prepared demo corpora, ask natural language questions, inspect retrieved evidence, and see which RAG strategy works best for that dataset and query type.
 
 Vector RAG uses hosted pgvector similarity search to find chunks with similar meaning signals. In this hosted prototype the embedding is a deterministic hashed token vector so the app works without a paid model API. Later it can be swapped for an open-source embedding endpoint. Vector RAG is useful for concept questions, but it can fail when the query requires an exact term, identifier, or quoted phrase.
 

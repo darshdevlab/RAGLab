@@ -20,6 +20,7 @@ Built-in demo datasets:
 Benchmark mode:
 
 - Each demo dataset has prepared gold question/answer fixtures in the browser bundle.
+- The opening screen shows a dataset EDA dashboard with corpus counts, available datasets, profile stats, and sample gold questions.
 - Benchmark runs the same prepared questions through all five RAG methods using the live `/api/query` endpoint.
 - The UI compares methods horizontally with coverage, average score, latency, evidence count, wins, and rank.
 - Accuracy is shown as gold-answer term coverage, not as a claim of human-graded factual correctness.

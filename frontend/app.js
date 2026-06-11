@@ -205,6 +205,29 @@ const benchmarkRegistry = {
   ],
 };
 
+const datasetProfileRegistry = {
+  "raglab-architecture": {
+    kind: "Architecture docs",
+    focus: "RAG architecture, pgvector, deployment options, and GraphRAG relationships.",
+    useCases: ["mixed", "semantic", "relationship", "deployment"],
+  },
+  "clinical-trial": {
+    kind: "Clinical protocol",
+    focus: "Clinical abbreviations, safety thresholds, escalation routing, and device-quality alerts.",
+    useCases: ["exact", "routing", "relationship", "safety"],
+  },
+  "incident-runbook": {
+    kind: "Incident runbook",
+    focus: "SEV rules, service dependency chains, payment fallback, and rollback decisions.",
+    useCases: ["exact", "dependency", "routing", "recovery"],
+  },
+  "support-kb": {
+    kind: "Support KB",
+    focus: "Refund policies, support plans, retention controls, and memory-biased recommendations.",
+    useCases: ["policy", "retention", "memory", "compliance"],
+  },
+};
+
 const METHOD_ORDER = ["bm25", "vector", "hybrid", "memory", "graph"];
 
 const defaultQuestions = [
@@ -264,6 +287,7 @@ function renderDataset(dataset) {
   $("datasetSource").textContent = dataset.source;
   renderDemos();
   renderBenchmarkSetup();
+  renderEdaDashboard();
 }
 
 function renderMemory(memories) {
@@ -284,6 +308,164 @@ function activeQuestions() {
 
 function activeBenchmark() {
   return activeDemo()?.benchmark?.length ? activeDemo().benchmark : [];
+}
+
+function activeDatasetProfile() {
+  const demo = activeDemo();
+  if (!demo) return null;
+  const dataset = demo.dataset || {};
+  const profile = datasetProfileRegistry[demo.slug] || {};
+  const qa = demo.benchmark?.length ? demo.benchmark : benchmarkRegistry[demo.slug] || [];
+  return {
+    demo,
+    dataset,
+    qa,
+    kind: profile.kind || "Demo corpus",
+    focus: profile.focus || demo.description || "Prepared retrieval dataset.",
+    useCases: profile.useCases || [],
+  };
+}
+
+function datasetTotal(metric) {
+  return state.demos.reduce((sum, demo) => sum + Number(demo.dataset?.[metric] || 0), 0);
+}
+
+function renderEdaDashboard() {
+  if (!$("edaSummary") || !state.demos.length) return;
+  const active = activeDatasetProfile();
+  const qaTotal = state.demos.reduce((sum, demo) => sum + (demo.benchmark?.length || 0), 0);
+  const avgTokens = Math.round(
+    state.demos.reduce((sum, demo) => sum + Number(demo.dataset?.avg_chunk_tokens || 0), 0) / Math.max(1, state.demos.length)
+  );
+
+  $("edaActiveType").textContent = active?.kind || "demo corpus";
+  $("edaSummary").innerHTML = [
+    ["Datasets", state.demos.length, "prepared corpora"],
+    ["Documents", datasetTotal("documents"), "seeded sources"],
+    ["Chunks", datasetTotal("chunks"), "retrieval units"],
+    ["Entities", datasetTotal("entities"), "graph nodes"],
+    ["Gold QA", qaTotal, `${avgTokens} avg tokens`],
+  ]
+    .map(
+      ([label, value, hint]) => `
+        <article class="eda-stat">
+          <span>${escapeHtml(label)}</span>
+          <strong>${escapeHtml(value)}</strong>
+          <small>${escapeHtml(hint)}</small>
+        </article>
+      `
+    )
+    .join("");
+
+  $("edaDatasetGrid").innerHTML = state.demos
+    .map((demo) => {
+      const dataset = demo.dataset || {};
+      const profile = datasetProfileRegistry[demo.slug] || {};
+      const activeClass = demo.slug === state.activeDemoSlug ? " is-active" : "";
+      return `
+        <button type="button" class="eda-dataset-card${activeClass}" data-slug="${escapeHtml(demo.slug)}">
+          <span>${escapeHtml(profile.kind || "Demo corpus")}</span>
+          <strong>${escapeHtml(demo.title)}</strong>
+          <small>${escapeHtml(demo.description || "")}</small>
+          <i>${Number(dataset.chunks || 0)} chunks &middot; ${demo.benchmark?.length || 0} QA</i>
+        </button>
+      `;
+    })
+    .join("");
+  $("edaDatasetGrid").querySelectorAll("button").forEach((button) => {
+    button.addEventListener("click", () => loadSample(button.dataset.slug));
+  });
+
+  renderEdaBars();
+  renderEdaProfile();
+}
+
+function renderEdaBars() {
+  if (!$("edaChart")) return;
+  const maxes = {
+    chunks: Math.max(1, ...state.demos.map((demo) => Number(demo.dataset?.chunks || 0))),
+    entities: Math.max(1, ...state.demos.map((demo) => Number(demo.dataset?.entities || 0))),
+    relations: Math.max(1, ...state.demos.map((demo) => Number(demo.dataset?.relations || 0))),
+  };
+  $("edaChart").innerHTML = `
+    <div class="eda-section-title">
+      <strong>Corpus shape</strong>
+      <span>chunks / entities / relations</span>
+    </div>
+    ${state.demos
+      .map((demo) => {
+        const dataset = demo.dataset || {};
+        const activeClass = demo.slug === state.activeDemoSlug ? " is-active" : "";
+        return `
+          <article class="eda-bar-row${activeClass}">
+            <div class="eda-bar-title">
+              <strong>${escapeHtml(demo.title)}</strong>
+              <span>${escapeHtml(datasetProfileRegistry[demo.slug]?.kind || "Demo corpus")}</span>
+            </div>
+            <div class="eda-bars">
+              ${edaMetricBar("Chunks", dataset.chunks, maxes.chunks, "chunks")}
+              ${edaMetricBar("Entities", dataset.entities, maxes.entities, "entities")}
+              ${edaMetricBar("Relations", dataset.relations, maxes.relations, "relations")}
+            </div>
+          </article>
+        `;
+      })
+      .join("")}
+  `;
+}
+
+function edaMetricBar(label, value, max, tone) {
+  const number = Number(value || 0);
+  const width = Math.max(4, Math.round((number / Math.max(1, max)) * 100));
+  return `
+    <div class="eda-bar eda-bar--${tone}">
+      <span>${escapeHtml(label)}</span>
+      <i><b style="width:${width}%"></b></i>
+      <em>${number}</em>
+    </div>
+  `;
+}
+
+function renderEdaProfile() {
+  const active = activeDatasetProfile();
+  if (!$("edaProfile") || !active) return;
+  const { demo, dataset, qa, kind, focus, useCases } = active;
+  $("edaProfile").innerHTML = `
+    <div class="eda-section-title">
+      <strong>${escapeHtml(demo.title)}</strong>
+      <span>${escapeHtml(kind)}</span>
+    </div>
+    <p>${escapeHtml(focus)}</p>
+    <div class="eda-profile-stats">
+      <span><b>${Number(dataset.documents || 0)}</b><small>Docs</small></span>
+      <span><b>${Number(dataset.chunks || 0)}</b><small>Chunks</small></span>
+      <span><b>${Number(dataset.entities || 0)}</b><small>Entities</small></span>
+      <span><b>${Number(dataset.relations || 0)}</b><small>Edges</small></span>
+    </div>
+    <div class="eda-chip-row">
+      ${useCases.map((item) => `<span>${escapeHtml(item)}</span>`).join("")}
+    </div>
+    <div class="eda-question-list">
+      ${qa
+        .slice(0, 2)
+        .map(
+          (item, index) => `
+            <button type="button" data-question="${escapeHtml(item.question)}">
+              <strong>Q${index + 1}</strong>
+              <span>${escapeHtml(item.type)}</span>
+              <small>${escapeHtml(item.question)}</small>
+            </button>
+          `
+        )
+        .join("")}
+    </div>
+  `;
+  $("edaProfile").querySelectorAll("button").forEach((button) => {
+    button.addEventListener("click", () => {
+      $("question").value = button.dataset.question;
+      runQuery();
+    });
+  });
 }
 
 function withBenchmark(demo) {
@@ -377,6 +559,7 @@ async function refreshDemos() {
   renderDemos();
   renderQuestionBank();
   renderBenchmarkSetup();
+  renderEdaDashboard();
 }
 
 function renderResults(response) {
