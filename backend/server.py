@@ -22,6 +22,16 @@ PROJECT_DIR = BACKEND_DIR.parent
 FRONTEND_DIR = PROJECT_DIR / "frontend"
 ARTIFACT_DIR = PROJECT_DIR / "artifacts"
 SAMPLE_PATH = PROJECT_DIR / "sample_data" / "raglab_demo.md"
+DATASET_DIR = PROJECT_DIR / "sample_data" / "datasets"
+
+DATASET_FILE_REGISTRY = {
+    "raglab-architecture": ("raglab-architecture-notes.md", "text/markdown"),
+    "clinical-trial": ("cardiomap-gold-qa.json", "application/json"),
+    "incident-runbook": ("northwind-incident-runbook.txt", "text/plain"),
+    "support-kb": ("atlasdesk-support-tickets.jsonl", "application/x-ndjson"),
+    "retail-orders-csv": ("retail-orders.csv", "text/csv"),
+    "rag-method-graph": ("rag-method-graph.ttl", "text/turtle"),
+}
 
 engine = RagLabEngine(artifact_dir=ARTIFACT_DIR, sample_path=SAMPLE_PATH)
 
@@ -37,6 +47,18 @@ class Handler(BaseHTTPRequestHandler):
             return
         if parsed.path == "/api/dataset/file":
             slug = parse_qs(parsed.query).get("slug", [""])[0]
+            if slug in DATASET_FILE_REGISTRY:
+                file_name, mime = DATASET_FILE_REGISTRY[slug]
+                self._json(
+                    {
+                        "slug": slug,
+                        "title": slug,
+                        "file_name": file_name,
+                        "mime": mime,
+                        "text": (DATASET_DIR / file_name).read_text(encoding="utf-8"),
+                    }
+                )
+                return
             demo = get_demo(slug or None)
             self._json(
                 {
@@ -50,8 +72,12 @@ class Handler(BaseHTTPRequestHandler):
             return
         if parsed.path == "/api/dataset/download":
             slug = parse_qs(parsed.query).get("slug", [""])[0]
+            if slug in DATASET_FILE_REGISTRY:
+                file_name, mime = DATASET_FILE_REGISTRY[slug]
+                self._download_text(file_name=file_name, mime=mime, text=(DATASET_DIR / file_name).read_text(encoding="utf-8"))
+                return
             demo = get_demo(slug or None)
-            self._download_text(file_name=f"{demo.slug}.md", text=demo.text)
+            self._download_text(file_name=f"{demo.slug}.md", mime="text/markdown", text=demo.text)
             return
         if parsed.path == "/api/dataset":
             self._json({"dataset": asdict(engine.stats())})
@@ -124,10 +150,10 @@ class Handler(BaseHTTPRequestHandler):
         self.end_headers()
         self.wfile.write(body)
 
-    def _download_text(self, file_name: str, text: str) -> None:
+    def _download_text(self, file_name: str, mime: str, text: str) -> None:
         body = text.encode("utf-8")
         self.send_response(HTTPStatus.OK)
-        self.send_header("Content-Type", "text/markdown; charset=utf-8")
+        self.send_header("Content-Type", f"{mime}; charset=utf-8")
         self.send_header("Content-Disposition", f'attachment; filename="{file_name}"')
         self.send_header("Content-Length", str(len(body)))
         self.send_header("Cache-Control", "no-store")

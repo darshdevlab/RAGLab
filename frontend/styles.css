@@ -95,6 +95,7 @@ button:disabled {
 
 .panel-head,
 .eda-head,
+.heading-row,
 .section-title,
 .file-toolbar {
   display: flex;
@@ -210,6 +211,22 @@ button:disabled {
   margin: 0;
   color: #4b5b54;
   line-height: 1.5;
+}
+
+.heading-row {
+  justify-content: flex-start;
+}
+
+.format-badge {
+  display: inline-flex;
+  align-items: center;
+  border: 1px solid #cfd8d2;
+  border-radius: 999px;
+  background: #f6f8f6;
+  color: #173f38;
+  padding: 3px 8px;
+  font-size: 12px;
+  font-weight: 800;
 }
 
 .download-button {

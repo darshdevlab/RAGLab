@@ -1,0 +1,44 @@
+[
+  {
+    "id": "cm_qa_001",
+    "type": "factoid",
+    "question": "Which trial arm sends medication adherence nudges?",
+    "answer": "The digital coaching arm DCA-42 sends medication adherence nudges.",
+    "gold_terms": ["DCA-42", "digital coaching", "adherence nudges"]
+  },
+  {
+    "id": "cm_qa_002",
+    "type": "eligibility",
+    "question": "Which exclusions mention dialysis or INV-908?",
+    "answer": "Exclusion criteria include dialysis and current use of investigational drug INV-908.",
+    "gold_terms": ["dialysis", "INV-908", "exclusion"]
+  },
+  {
+    "id": "cm_qa_003",
+    "type": "routing",
+    "question": "Where should chest pain with shortness of breath be routed?",
+    "answer": "Chest pain with shortness of breath creates a red alert routed to Nurse Triage.",
+    "gold_terms": ["chest pain", "shortness of breath", "red alert", "Nurse Triage"]
+  },
+  {
+    "id": "cm_qa_004",
+    "type": "abbreviation",
+    "question": "What does eGFR mean in the protocol glossary?",
+    "answer": "eGFR means estimated glomerular filtration rate.",
+    "gold_terms": ["eGFR", "estimated glomerular filtration rate"]
+  },
+  {
+    "id": "cm_qa_005",
+    "type": "endpoint",
+    "question": "What is the primary endpoint at week 12?",
+    "answer": "The primary endpoint is change in systolic blood pressure at week 12.",
+    "gold_terms": ["primary endpoint", "systolic blood pressure", "week 12"]
+  },
+  {
+    "id": "cm_qa_006",
+    "type": "device",
+    "question": "Which team handles PulseBand PB-7 device-quality alerts?",
+    "answer": "Device-quality alerts from PulseBand PB-7 route to Biomedical Operations.",
+    "gold_terms": ["PulseBand PB-7", "device-quality alerts", "Biomedical Operations"]
+  }
+]

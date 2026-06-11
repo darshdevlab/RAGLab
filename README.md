@@ -12,16 +12,18 @@ It runs real local retrieval engines:
 
 Built-in demo datasets:
 
-- RAGLab Architecture: deployment, pgvector, hybrid retrieval, and graph relationships.
-- CardioMap Trial Protocol: clinical abbreviations, safety thresholds, and routing.
-- Northwind Incident Runbook: SEV terms, service dependencies, and recovery playbooks.
-- AtlasDesk Support KB: refund, retention, plan, and memory-biased support policies.
+- RAGLab Architecture Notes: unstructured Markdown document, `.md`.
+- CardioMap Gold QA: question-answer benchmark fixtures, `.json`.
+- Northwind Incident Runbook: plain text operational runbook, `.txt`.
+- AtlasDesk Support Ticket Stream: semi-structured ticket records, `.jsonl`.
+- Retail Orders Table: structured tabular data, `.csv`.
+- RAG Method Knowledge Graph: RDF-style relationship triples, `.ttl`.
 
 Current public UI:
 
 - The first screen lists only the prepared dataset names.
-- Clicking a dataset opens its EDA dashboard with corpus counts, text profile, top terms, and the loaded markdown file.
-- Each dataset file can be downloaded as `.md` from the browser.
+- Clicking a dataset opens its EDA dashboard with corpus counts, text profile, top terms, and the loaded dataset file.
+- Each dataset file can be downloaded in its own format from the browser.
 - Query, benchmark, upload, memory, and method-comparison controls are hidden for now and can be added back one by one.
 
 The local version avoids npm, pip, and external LLM APIs so the product behavior can be verified first. The hosted version uses Supabase for seeded demo documents, chunks, pgvector embeddings, keyword search, demo memory, entities, and relations.

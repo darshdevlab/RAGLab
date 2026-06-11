@@ -115,60 +115,77 @@ const DEMOS = [
   },
 ];
 
-const DEMO_TEXTS: Record<string, string> = {
-  "raglab-architecture": `# RAGLab Demo Dataset
+const DEMO_FILES: Record<string, { fileName: string; mime: string; text: string; title: string }> = {
+  "raglab-architecture": {
+    fileName: "raglab-architecture-notes.md",
+    mime: "text/markdown",
+    title: "RAGLab Architecture Notes",
+    text: `# RAGLab Architecture Notes
 
-RAGLab is a product prototype for comparing retrieval augmented generation strategies on the same dataset. The platform helps a visitor choose prepared demo corpora, ask natural language questions, inspect retrieved evidence, and see which RAG strategy works best for that dataset and query type.
+RAGLab compares retrieval augmented generation strategies on the same dataset. The prototype is designed for a public portfolio visitor who wants to inspect data, understand retrieval tradeoffs, and see why one RAG method fits a query better than another.
 
-Vector RAG uses hosted pgvector similarity search to find chunks with similar meaning signals. In this hosted prototype the embedding is a deterministic hashed token vector so the app works without a paid model API. Later it can be swapped for an open-source embedding endpoint. Vector RAG is useful for concept questions, but it can fail when the query requires an exact term, identifier, or quoted phrase.
+Vector RAG uses pgvector similarity search to find chunks with similar meaning signals. In this demo, embeddings can be deterministic free vectors, then swapped later for an open-source embedding endpoint.
 
-BM25 and keyword RAG use Postgres full-text search. BM25 is strong when the user searches for exact terms such as pgvector, Supabase, GraphRAG, latency, citations, or a named product. BM25 is fast, explainable, and cheap. It can miss paraphrases when the document uses different wording from the question.
+BM25 and keyword retrieval use lexical matching. BM25 is strong for exact terms such as pgvector, Supabase, GraphRAG, latency, citations, and named products. It is explainable and cheap, but it can miss paraphrases.
 
-Hybrid RAG combines keyword scores with vector similarity scores. Hybrid RAG is often the safest default because it keeps exact-term precision while recovering semantic matches. A good hybrid system normalizes BM25 and vector scores before combining them. It should show score components so the user can understand why a chunk was selected.
+Hybrid RAG combines keyword scores with vector similarity. A good hybrid retriever normalizes both scores before ranking chunks. It should expose score components so a user can see why a chunk was selected.
 
-Memory RAG adds session context. It stores user preferences, prior questions, accepted facts, and rejected facts. Memory RAG is useful when the user says things like remember that I prefer low cost deployment and later asks which architecture should be selected. Memory must include approve, delete, and inspect controls because uncontrolled memory can make retrieval biased or stale.
+Memory RAG adds session context such as preferences, accepted facts, rejected facts, or prior questions. It must include inspect and delete controls because uncontrolled memory can bias retrieval.
 
-GraphRAG builds an entity and relationship layer over the document collection. Entities can include RAGLab, Supabase, pgvector, Vercel, BM25, Hybrid RAG, Memory RAG, GraphRAG, and citations. Relationships connect methods to strengths, limitations, storage choices, and deployment decisions. GraphRAG is useful for questions about how concepts connect, which methods depend on embeddings, or which architecture links Vercel with Supabase.
+GraphRAG creates entities and relationships from the corpus. Entities can include Vercel, Supabase, pgvector, BM25, Hybrid RAG, Memory RAG, GraphRAG, and citations. Relationships connect methods to strengths, limits, storage choices, and deployment decisions.`,
+  },
+  "clinical-trial": {
+    fileName: "cardiomap-gold-qa.json",
+    mime: "application/json",
+    title: "CardioMap Gold QA",
+    text: `[
+  {"id":"cm_qa_001","type":"factoid","question":"Which trial arm sends medication adherence nudges?","answer":"The digital coaching arm DCA-42 sends medication adherence nudges.","gold_terms":["DCA-42","digital coaching","adherence nudges"]},
+  {"id":"cm_qa_002","type":"eligibility","question":"Which exclusions mention dialysis or INV-908?","answer":"Exclusion criteria include dialysis and current use of investigational drug INV-908.","gold_terms":["dialysis","INV-908","exclusion"]},
+  {"id":"cm_qa_003","type":"routing","question":"Where should chest pain with shortness of breath be routed?","answer":"Chest pain with shortness of breath creates a red alert routed to Nurse Triage.","gold_terms":["chest pain","shortness of breath","red alert","Nurse Triage"]}
+]`,
+  },
+  "incident-runbook": {
+    fileName: "northwind-incident-runbook.txt",
+    mime: "text/plain",
+    title: "Northwind Incident Runbook",
+    text: `Northwind Incident Response Runbook
 
-For the online version, Vercel can host the interactive frontend, but this live prototype is served from a Supabase Edge Function. Supabase stores documents, chunks, metadata, vector embeddings through pgvector, keyword search indexes, memory rows, entities, and relations. This means the first online version does not need separate Pinecone, Qdrant, Weaviate, or Neo4j deployments. Those adapters can be added later if the product becomes a database benchmark.
+SEV-1 is declared when checkout success rate falls below 94 percent for five minutes, payment authorization errors exceed 6 percent, or API Gateway returns more than 2 percent 5xx responses.
 
-RAGLab should not pretend every RAG method is correct. The dashboard should show retrieved chunks, citations, latency, method strengths, method limitations, and a recommendation score. A recommendation is only trustworthy when evidence is visible. The strongest portfolio version is a full working end-to-end prototype: data ingestion, chunking, indexing, query execution, retrieval comparison, scoring, ranking, and interactive UI.`,
+Dependency map: API Gateway calls Cart Service. Cart Service calls Inventory Service and Redis Session Cache. Payment Service calls Fraud Scoring. PostgreSQL Orders stores completed orders.
 
-  "clinical-trial": `# CardioMap Trial Protocol
+Recovery playbooks: rollback latest Gateway routing rule, scale Payment Service workers, disable nonessential recommendation calls, enable queue drain mode.`,
+  },
+  "support-kb": {
+    fileName: "atlasdesk-support-tickets.jsonl",
+    mime: "application/x-ndjson",
+    title: "AtlasDesk Support Ticket Stream",
+    text: `{"ticket_id":"TCK-1001","plan":"Enterprise","intent":"audit_export","priority":"urgent","message":"Account owner requests audit exports for Q4 compliance review.","resolution":"Verify account owner, generate audit export, notify named customer success manager."}
+{"ticket_id":"TCK-1002","plan":"Starter","intent":"refund","priority":"normal","message":"Customer requests refund on day 10 after processing 120 tickets.","resolution":"Eligible under RFD-14 if no custom onboarding was delivered."}
+{"ticket_id":"TCK-1003","plan":"Growth","intent":"retention","priority":"normal","message":"Workspace admin asks how long closed tickets remain available.","resolution":"Growth retains closed tickets for 30 months under DRP-30."}`,
+  },
+  "retail-orders-csv": {
+    fileName: "retail-orders.csv",
+    mime: "text/csv",
+    title: "Retail Orders Table",
+    text: `order_id,order_date,region,customer_segment,product_category,order_value,status,refund_requested,delivery_days
+ORD-9001,2026-01-04,West,Enterprise,Analytics,1240.00,delivered,false,3
+ORD-9002,2026-01-05,East,SMB,Support,210.50,delivered,true,5
+ORD-9003,2026-01-08,Central,Midmarket,Security,780.00,processing,false,2`,
+  },
+  "rag-method-graph": {
+    fileName: "rag-method-graph.ttl",
+    mime: "text/turtle",
+    title: "RAG Method Knowledge Graph",
+    text: `@prefix rag: <https://example.com/raglab/> .
 
-CardioMap is a synthetic clinical trial protocol for a remote blood pressure monitoring study. The protocol compares usual care with a digital coaching arm called DCA-42. Participants wear the PulseBand PB-7 cuff, answer symptom surveys, and receive medication adherence nudges. The primary endpoint is change in systolic blood pressure at week 12.
-
-Eligibility requires adults aged 35 to 75 with two clinic systolic readings above 140 mmHg or one home seven-day average above 135 mmHg. Exclusion criteria include pregnancy, dialysis, active myocarditis, recent stroke within 90 days, and current use of investigational drug INV-908. Patients with atrial fibrillation may enroll only if their resting heart rate is below 110 bpm.
-
-The safety workflow routes red alerts to Nurse Triage, amber alerts to the coaching queue, and device-quality alerts to Biomedical Operations. A red alert is generated when systolic pressure exceeds 180 mmHg, diastolic pressure exceeds 120 mmHg, or the patient reports chest pain with shortness of breath. Amber alerts cover missed readings for three days, dizziness, or mild edema.
-
-The protocol glossary defines SBP as systolic blood pressure, DBP as diastolic blood pressure, eGFR as estimated glomerular filtration rate, and AE as adverse event. Keyword retrieval should be strong for exact abbreviations such as eGFR, AE, PB-7, DCA-42, and INV-908. Semantic retrieval should help when a user asks about kidney function, safety routing, or high blood pressure without using the exact terms.
-
-CardioMap has a monitoring graph that connects PulseBand PB-7 to Biomedical Operations, Nurse Triage to red alerts, and DCA-42 to adherence nudges. The graph also links chest pain to red alert escalation and dialysis to exclusion. A relationship query about which teams handle device problems should traverse from device-quality alerts to Biomedical Operations.`,
-
-  "incident-runbook": `# Northwind Incident Response Runbook
-
-Northwind Cloud runs a synthetic checkout platform with API Gateway, Cart Service, Payment Service, Inventory Service, Fraud Scoring, PostgreSQL Orders, and Redis Session Cache. The customer-facing service level objective is 99.9 percent monthly availability and p95 checkout latency below 450 ms.
-
-Incident SEV-1 is declared when checkout success rate falls below 94 percent for five minutes, payment authorization errors exceed 6 percent, or API Gateway returns more than 2 percent 5xx responses. SEV-2 is declared when p95 latency exceeds 900 ms for ten minutes or one region has elevated queue depth. The escalation channel is #incident-checkout and the incident commander owns status updates every fifteen minutes.
-
-The dependency map is important. API Gateway calls Cart Service, Cart Service calls Inventory Service and Redis Session Cache, Payment Service calls Fraud Scoring, and PostgreSQL Orders stores completed orders. If Redis Session Cache is unavailable, Cart Service can serve stale carts for ten minutes. If Fraud Scoring is unavailable, Payment Service must switch to rules-only mode after approval from Risk Operations.
-
-Recovery playbooks include rollback of the latest Gateway routing rule, scaling Payment Service workers, disabling nonessential recommendation calls, and enabling queue drain mode. Rollback is preferred when the latest deployment changed routing, headers, or request signing. Queue drain mode is preferred when the database is healthy but workers are behind.
-
-GraphRAG should perform well on questions about service dependencies and escalation paths. BM25 should perform well for exact strings such as SEV-1, p95, #incident-checkout, Redis Session Cache, and rules-only mode. Hybrid retrieval should do well when a query mixes exact incident codes with broad language about checkout failure.`,
-
-  "support-kb": `# AtlasDesk Customer Support Knowledge Base
-
-AtlasDesk is a synthetic B2B support product with three plans: Starter, Growth, and Enterprise. Starter includes email support with a 24 hour target, Growth includes chat support with a four hour target, and Enterprise includes a named customer success manager with a one hour urgent target.
-
-Refund policy RFD-14 says a customer can receive a full refund within 14 days if fewer than 500 tickets were processed and no custom onboarding was delivered. After 14 days, billing credits require Finance Approval. Enterprise customers with annual contracts use addendum ENT-A9, which allows service credits for missed urgent response targets.
-
-Data retention policy DRP-30 keeps closed tickets for 30 months on Growth and Enterprise, but only 12 months on Starter. Audit exports are available on Enterprise and must be requested by an account owner. A deletion request removes attachments first, then ticket messages, then analytics aggregates during the next nightly privacy job.
-
-The support graph connects Enterprise to customer success manager, urgent target, audit exports, and ENT-A9. It connects refund requests to RFD-14, Finance Approval, and billing credits. It connects deletion requests to attachments, ticket messages, analytics aggregates, and privacy job. Relationship queries should explain the chain rather than only return a single policy paragraph.
-
-Memory RAG is useful for AtlasDesk when the user says they prefer low-cost plans, short response times, or strict retention. If the user remembers that they are evaluating Enterprise compliance, retrieval should bias toward audit exports, retention, account owner controls, and service credits.`,
+rag:HybridRAG rag:combines rag:BM25 .
+rag:HybridRAG rag:combines rag:VectorRAG .
+rag:BM25 rag:bestFor rag:ExactTermQuery .
+rag:VectorRAG rag:uses rag:Pgvector .
+rag:GraphRAG rag:uses rag:EntityRelationshipTraversal .
+rag:RAGLab rag:compares rag:HybridRAG .`,
+  },
 };
 
 const DEFAULT_DATASET_ID = DEMOS[0].dataset.id;
@@ -264,12 +281,12 @@ Deno.serve(async (req) => {
     }
     if (req.method === "GET" && path === "/api/demos") return json({ demos: DEMOS });
     if (req.method === "GET" && path === "/api/dataset/file") {
-      const demo = demoBySlug(url.searchParams.get("slug"));
-      return json(datasetFilePayload(demo));
+      const file = datasetFileBySlug(url.searchParams.get("slug"));
+      return json(datasetFilePayload(file));
     }
     if (req.method === "GET" && path === "/api/dataset/download") {
-      const demo = demoBySlug(url.searchParams.get("slug"));
-      return markdown(DEMO_TEXTS[demo.slug], `${demo.slug}.md`);
+      const file = datasetFileBySlug(url.searchParams.get("slug"));
+      return textFile(file);
     }
     if (req.method === "GET" && path === "/api/dataset") {
       return json({ dataset: await datasetStats(DEFAULT_DATASET_ID) });
@@ -307,19 +324,21 @@ function normalizePath(pathname: string) {
   return path || "/";
 }
 
-function demoBySlug(slug: string | null) {
-  const demo = DEMOS.find((item) => item.slug === String(slug || "")) || DEMOS[0];
-  if (!DEMO_TEXTS[demo.slug]) throw new HttpError(404, "Dataset file is unavailable.");
-  return demo;
+function datasetFileBySlug(slug: string | null) {
+  const requestedSlug = String(slug || DEMOS[0].slug);
+  const resolvedSlug = DEMO_FILES[requestedSlug] ? requestedSlug : DEMOS[0].slug;
+  const file = DEMO_FILES[resolvedSlug];
+  if (!file) throw new HttpError(404, "Dataset file is unavailable.");
+  return { slug: resolvedSlug, ...file };
 }
 
-function datasetFilePayload(demo: (typeof DEMOS)[number]) {
+function datasetFilePayload(file: { slug: string; title: string; fileName: string; mime: string; text: string }) {
   return {
-    slug: demo.slug,
-    title: demo.title,
-    file_name: `${demo.slug}.md`,
-    mime: "text/markdown",
-    text: DEMO_TEXTS[demo.slug],
+    slug: file.slug,
+    title: file.title,
+    file_name: file.fileName,
+    mime: file.mime,
+    text: file.text,
   };
 }
 
@@ -692,13 +711,13 @@ function json(payload: unknown, status = 200) {
   });
 }
 
-function markdown(text: string, fileName: string) {
-  return new Response(text, {
+function textFile(file: { fileName: string; mime: string; text: string }) {
+  return new Response(file.text, {
     status: 200,
     headers: {
       ...corsHeaders,
-      "Content-Type": "text/markdown; charset=utf-8",
-      "Content-Disposition": `attachment; filename="${fileName}"`,
+      "Content-Type": `${file.mime}; charset=utf-8`,
+      "Content-Disposition": `attachment; filename="${file.fileName}"`,
       "Cache-Control": "no-store",
     },
   });

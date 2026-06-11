@@ -1,0 +1,11 @@
+order_id,order_date,region,customer_segment,product_category,order_value,status,refund_requested,delivery_days
+ORD-9001,2026-01-04,West,Enterprise,Analytics,1240.00,delivered,false,3
+ORD-9002,2026-01-05,East,SMB,Support,210.50,delivered,true,5
+ORD-9003,2026-01-08,Central,Midmarket,Security,780.00,processing,false,2
+ORD-9004,2026-01-10,West,SMB,Analytics,189.00,delivered,false,4
+ORD-9005,2026-01-12,South,Enterprise,Security,1540.25,delayed,false,8
+ORD-9006,2026-01-14,East,Midmarket,Data Platform,960.75,delivered,false,3
+ORD-9007,2026-01-16,Central,SMB,Support,145.00,cancelled,true,0
+ORD-9008,2026-01-19,South,Midmarket,Analytics,640.20,delivered,false,6
+ORD-9009,2026-01-22,West,Enterprise,Data Platform,2210.00,processing,false,1
+ORD-9010,2026-01-24,East,Enterprise,Security,1765.40,delivered,false,2
