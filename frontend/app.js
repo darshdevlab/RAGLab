@@ -442,11 +442,13 @@ function renderChatWorkspace(errorMessage = "") {
       <main class="chat-main">
         <section class="chat-thread" id="chatThread">
           ${renderChatIntro(demo, file, analysis, errorMessage)}
-          ${demo ? renderQueryOptions(queries) : ""}
           ${demo && !state.selectedQuery ? renderEmptyChatSpace() : ""}
           ${demo && state.selectedQuery ? renderBenchmarkConversation(state.selectedQuery, results) : ""}
         </section>
-        ${renderPromptComposer(demo)}
+        <div class="chat-input-stack">
+          ${demo ? renderQueryOptions(queries) : ""}
+          ${renderPromptComposer(demo)}
+        </div>
       </main>
     </section>
   `;
