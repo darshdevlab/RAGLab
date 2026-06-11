@@ -440,10 +440,10 @@ function renderChatWorkspace(errorMessage = "") {
       </aside>
 
       <main class="chat-main">
-        ${renderChatHeader(demo, file)}
         <section class="chat-thread" id="chatThread">
           ${renderChatIntro(demo, file, analysis, errorMessage)}
           ${demo ? renderQueryOptions(queries) : ""}
+          ${demo && !state.selectedQuery ? renderEmptyChatSpace() : ""}
           ${demo && state.selectedQuery ? renderBenchmarkConversation(state.selectedQuery, results) : ""}
         </section>
         ${renderPromptComposer(demo)}
@@ -531,20 +531,8 @@ function renderSidebarEda(demo, file, analysis) {
   `;
 }
 
-function renderChatHeader(demo, file) {
-  return `
-    <header class="chat-header">
-      <div>
-        <span class="section-kicker">Benchmark Chat</span>
-        <h2>${demo ? escapeHtml(demo.title) : "Choose a dataset to begin"}</h2>
-      </div>
-      ${
-        demo
-          ? `<div class="selected-dataset"><span>Dataset selected</span><strong>${escapeHtml(extensionLabel(file.fileName))}</strong></div>`
-          : `<div class="selected-dataset"><span>No dataset</span><strong>Select left</strong></div>`
-      }
-    </header>
-  `;
+function renderEmptyChatSpace() {
+  return `<div class="chat-empty-space" aria-hidden="true"></div>`;
 }
 
 function renderChatIntro(demo, file, analysis, errorMessage) {

@@ -138,7 +138,6 @@ textarea:disabled {
 
 .section-title,
 .eda-title,
-.chat-header,
 .method-head,
 .score-meter,
 .file-toolbar {
@@ -151,7 +150,7 @@ textarea:disabled {
 .section-title h2,
 .eda-title h2,
 .section-title h3,
-.chat-header h2 {
+.empty-state h2 {
   margin: 0;
   letter-spacing: 0;
 }
@@ -416,51 +415,16 @@ textarea:disabled {
 
 .chat-main {
   display: grid;
-  grid-template-rows: auto minmax(0, 1fr) auto;
+  grid-template-rows: minmax(0, 1fr) auto;
   overflow: hidden;
 }
 
-.chat-header {
-  min-height: 76px;
-  border-bottom: 1px solid #e3e5e1;
-  padding: 14px 16px;
-}
-
-.chat-header h2 {
-  margin-top: 2px;
-  font-size: clamp(21px, 2vw, 30px);
-  line-height: 1.1;
-}
-
-.selected-dataset {
-  display: grid;
-  min-width: 138px;
-  justify-items: end;
-  gap: 3px;
-  border: 1px solid #d6ddd7;
-  border-radius: 8px;
-  background: #f8faf8;
-  padding: 8px 10px;
-}
-
-.selected-dataset span {
-  color: #65726b;
-  font-size: 11px;
-  font-weight: 800;
-  text-transform: uppercase;
-}
-
-.selected-dataset strong {
-  color: #173f38;
-  font-size: 13px;
-}
-
 .chat-thread {
-  display: grid;
-  align-content: start;
+  display: flex;
+  flex-direction: column;
   gap: 14px;
   overflow: auto;
-  padding: 16px;
+  padding: 8px 8px 16px;
 }
 
 .chat-message {
@@ -521,18 +485,19 @@ textarea:disabled {
   display: grid;
   gap: 10px;
   border: 1px solid #e0e4df;
-  border-radius: 10px;
-  background: #fbfcfb;
+  border-radius: 8px;
+  background: #ffffff;
   padding: 12px;
 }
 
 .query-grid {
   display: grid;
-  grid-template-columns: repeat(5, minmax(150px, 1fr));
+  grid-template-columns: repeat(5, minmax(0, 1fr));
   gap: 8px;
 }
 
 .query-card {
+  position: relative;
   display: grid;
   min-height: 104px;
   align-content: start;
@@ -541,13 +506,45 @@ textarea:disabled {
   border-radius: 8px;
   background: #ffffff;
   color: #1f2723;
-  padding: 10px;
+  padding: 10px 36px 12px 10px;
   text-align: left;
+}
+
+.query-card::after {
+  position: absolute;
+  right: 10px;
+  bottom: 10px;
+  display: grid;
+  width: 24px;
+  height: 24px;
+  place-items: center;
+  border: 1px solid #cbd8d2;
+  border-radius: 999px;
+  color: #167064;
+  content: "\2192";
+  font-size: 15px;
+  font-weight: 900;
+  opacity: 0;
+  transform: translateX(-2px);
+  transition:
+    opacity 140ms ease,
+    transform 140ms ease;
+}
+
+.query-card:hover::after,
+.query-card.is-active::after {
+  opacity: 1;
+  transform: translateX(0);
 }
 
 .query-card strong {
   font-size: 13px;
   line-height: 1.35;
+}
+
+.chat-empty-space {
+  flex: 1 1 auto;
+  min-height: clamp(320px, 48vh, 620px);
 }
 
 .result-bubble {
@@ -689,20 +686,20 @@ textarea:disabled {
   grid-template-columns: minmax(0, 1fr) auto;
   gap: 10px;
   border-top: 1px solid #e3e5e1;
-  background: #ffffff;
-  padding: 12px;
+  background: #fbfcfb;
+  padding: 12px 8px;
 }
 
 .prompt-composer textarea {
   width: 100%;
-  min-height: 52px;
+  min-height: 70px;
   max-height: 140px;
   resize: vertical;
   border: 1px solid #d6ddd7;
   border-radius: 10px;
-  background: #fbfcfb;
+  background: #ffffff;
   color: #1f2723;
-  padding: 12px;
+  padding: 16px 14px;
   line-height: 1.4;
 }
 
@@ -799,7 +796,6 @@ textarea:disabled {
   }
 
   .topbar,
-  .chat-header,
   .answer-summary,
   .prompt-composer,
   .score-note {
@@ -823,10 +819,6 @@ textarea:disabled {
 
   .chat-main {
     min-height: 680px;
-  }
-
-  .selected-dataset {
-    justify-items: start;
   }
 
   .prompt-composer {
