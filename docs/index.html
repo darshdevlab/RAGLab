@@ -4,33 +4,25 @@
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <title>RAGLab</title>
-    <link rel="stylesheet" href="styles.css?v=20260611-benchmark-flow" />
-    <script src="app.js?v=20260611-benchmark-flow" defer></script>
+    <link rel="stylesheet" href="styles.css?v=20260611-multi-page" />
+    <script src="app.js?v=20260611-multi-page" defer></script>
   </head>
   <body>
     <main class="app-shell">
       <header class="topbar">
         <div>
           <div class="eyebrow">RAGLab</div>
-          <h1>Datasets</h1>
+          <h1 id="pageTitle">Datasets</h1>
         </div>
         <div class="status-pill" id="status">Loading datasets</div>
       </header>
 
-      <section class="dataset-workspace">
-        <aside class="dataset-panel">
-          <div class="panel-head">
-            <h2>Dataset Name</h2>
-            <span id="datasetCount">0</span>
-          </div>
-          <div class="dataset-list" id="datasetList"></div>
-        </aside>
+      <nav class="topnav" id="topNav" aria-label="RAGLab pages"></nav>
 
-        <section class="dataset-view" id="datasetView">
-          <div class="empty-state">
-            <h2>No dataset selected</h2>
-          </div>
-        </section>
+      <section class="page-view" id="pageView">
+        <div class="empty-state">
+          <h2>Loading</h2>
+        </div>
       </section>
     </main>
   </body>

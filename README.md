@@ -21,9 +21,9 @@ Built-in demo datasets:
 
 Current public UI:
 
-- The first screen asks the visitor to choose a dataset and shows all prepared dataset types.
-- Clicking a dataset opens an interactive EDA dashboard with corpus counts, text profile, best-fit retrievers, top terms, sample records, and the loaded dataset file.
-- Each dataset has a "Let's benchmark RAG" action with prepared example queries.
+- `#/datasets` asks the visitor to choose a dataset and shows all prepared dataset types as cards.
+- `#/dataset/{slug}` opens a focused EDA dashboard with corpus counts, text profile, best-fit retrievers, top terms, sample records, and the loaded dataset file.
+- `#/benchmark/{slug}` opens the benchmark workspace with prepared example queries.
 - Clicking an example query compares BM25, Vector RAG, Hybrid RAG, GraphRAG, and Field-aware RAG side by side with score, relevance, coverage, latency, evidence count, and retrieved evidence.
 - Each dataset file can be downloaded in its own format from the browser.
 - Upload and write-memory controls remain hidden for the public portfolio demo.

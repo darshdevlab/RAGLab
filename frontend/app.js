@@ -321,7 +321,6 @@ const stopwords = new Set([
 const state = {
   activeFile: null,
   activeSlug: "",
-  benchmarkOpen: false,
   chunks: [],
   demos: [],
   selectedQuery: null,
@@ -331,15 +330,11 @@ const $ = (id) => document.getElementById(id);
 const localBySlug = new Map(localDemos.map((demo) => [demo.slug, demo]));
 
 document.addEventListener("DOMContentLoaded", init);
+window.addEventListener("hashchange", renderRoute);
 
 async function init() {
   await refreshDatasets();
-  const deepLinkedSlug = window.location.hash.replace("#", "");
-  if (deepLinkedSlug && state.demos.some((demo) => demo.slug === deepLinkedSlug)) {
-    loadDataset(deepLinkedSlug);
-  } else {
-    renderChooseState();
-  }
+  await renderRoute();
 }
 
 async function refreshDatasets() {
@@ -350,7 +345,6 @@ async function refreshDatasets() {
   } catch {
     state.demos = localDemos;
   }
-  renderDatasetList();
   setStatus(`${state.demos.length} datasets ready`);
 }
 
@@ -380,110 +374,152 @@ function mergeDemo(remote) {
   };
 }
 
-function renderDatasetList() {
-  $("datasetCount").textContent = state.demos.length;
-  $("datasetList").innerHTML = state.demos
-    .map((demo) => {
-      const active = demo.slug === state.activeSlug ? " is-active" : "";
-      const file = datasetFiles[demo.slug];
-      return `
-        <button type="button" class="dataset-item${active}" data-slug="${escapeHtml(demo.slug)}">
-          <strong>${escapeHtml(demo.title)}</strong>
-          <span>${escapeHtml(demo.profile?.kind || demo.source || "Demo dataset")}${file ? ` | ${escapeHtml(extensionLabel(file.fileName))}` : ""}</span>
-        </button>
-      `;
-    })
-    .join("");
+function parseRoute() {
+  const raw = window.location.hash.replace(/^#\/?/, "").trim();
+  if (!raw) return { page: "datasets", slug: "" };
 
-  $("datasetList").querySelectorAll("button").forEach((button) => {
-    button.addEventListener("click", () => loadDataset(button.dataset.slug));
-  });
+  const parts = raw.split("/").filter(Boolean);
+  if (parts.length === 1 && getDemo(parts[0])) return { page: "dataset", slug: parts[0] };
+  return { page: parts[0] || "datasets", slug: parts[1] || "" };
 }
 
-function renderChooseState() {
-  $("datasetView").innerHTML = `
-    <section class="choose-panel">
-      <div class="choose-head">
-        <span class="section-kicker">Start here</span>
-        <h2>Choose your dataset</h2>
-        <p>Select a data type to inspect its shape, sample records, ingestion plan, and then benchmark RAG methods on prepared queries.</p>
-      </div>
-      <div class="choice-grid">
-        ${state.demos
-          .map((demo) => {
-            const file = datasetFiles[demo.slug];
-            const dataset = demo.dataset || {};
-            return `
-              <button type="button" class="choice-card" data-slug="${escapeHtml(demo.slug)}">
-                <span>${escapeHtml(demo.profile?.kind || "Demo dataset")} ${file ? escapeHtml(extensionLabel(file.fileName)) : ""}</span>
-                <strong>${escapeHtml(demo.title)}</strong>
-                <small>${escapeHtml(demo.description || demo.profile?.focus || "")}</small>
-                <i>${formatNumber(dataset.records || dataset.documents || 0)} ${escapeHtml((demo.profile?.primaryMetric || "records").toLowerCase())}</i>
-              </button>
-            `;
-          })
-          .join("")}
-      </div>
-    </section>
-  `;
+async function renderRoute() {
+  const route = parseRoute();
+  const page = ["datasets", "dataset", "benchmark"].includes(route.page) ? route.page : "datasets";
 
-  $("datasetView").querySelectorAll(".choice-card").forEach((button) => {
-    button.addEventListener("click", () => loadDataset(button.dataset.slug));
-  });
+  if (page === "dataset" && route.slug) {
+    await renderDatasetRoute(route.slug);
+    return;
+  }
+
+  if (page === "benchmark" && route.slug) {
+    await renderBenchmarkRoute(route.slug);
+    return;
+  }
+
+  renderDatasetIndex();
 }
 
-async function loadDataset(slug) {
-  const demo = state.demos.find((item) => item.slug === slug);
-  if (!demo) return;
-
-  state.activeSlug = slug;
-  state.benchmarkOpen = false;
-  state.selectedQuery = null;
-  renderDatasetList();
-  setStatus("Loading dataset");
-
+async function renderDatasetRoute(slug) {
   try {
-    const file = await fetchDatasetFile(slug);
-    state.activeFile = file;
-    state.chunks = createChunks(slug, file);
-    renderDatasetDashboard(demo, file);
-    window.location.hash = slug;
-    setStatus("Dataset loaded");
+    await ensureDataset(slug);
+    const demo = getDemo(slug);
+    renderTopNav("dataset", slug);
+    setPageTitle("EDA");
+    setStatus("EDA ready");
+    renderDatasetPage(demo, state.activeFile);
   } catch (error) {
-    $("datasetView").innerHTML = `<div class="empty-state"><h2>${escapeHtml(error.message)}</h2></div>`;
-    setStatus("Dataset load failed");
+    renderErrorPage(error.message || "Dataset could not be loaded.");
   }
 }
 
-async function fetchDatasetFile(slug) {
-  const localFile = datasetFiles[slug];
-  if (localFile) return normalizeFilePayload(slug, localFile);
-
-  const payload = await api(`/api/dataset/file?slug=${encodeURIComponent(slug)}`);
-  if (payload.text) return normalizeFilePayload(slug, payload);
-  throw new Error("Dataset file is unavailable.");
+async function renderBenchmarkRoute(slug) {
+  try {
+    await ensureDataset(slug);
+    const demo = getDemo(slug);
+    renderTopNav("benchmark", slug);
+    setPageTitle("Benchmark");
+    setStatus("Benchmark ready");
+    renderBenchmarkPage(demo, state.activeFile);
+  } catch (error) {
+    renderErrorPage(error.message || "Benchmark could not be loaded.");
+  }
 }
 
-function normalizeFilePayload(slug, payload) {
-  const demo = localBySlug.get(slug);
-  return {
-    slug,
-    title: payload.title || demo?.title || slug,
-    fileName: payload.fileName || payload.file_name || `${slug}.txt`,
-    mime: payload.mime || "text/plain",
-    text: String(payload.text || ""),
-  };
+async function ensureDataset(slug) {
+  const demo = getDemo(slug);
+  if (!demo) throw new Error("Dataset not found.");
+
+  if (state.activeSlug === slug && state.activeFile) return;
+
+  setStatus("Loading dataset");
+  state.activeSlug = slug;
+  state.selectedQuery = null;
+  state.activeFile = await fetchDatasetFile(slug);
+  state.chunks = createChunks(slug, state.activeFile);
 }
 
-function renderDatasetDashboard(demo, file) {
+function renderTopNav(page, slug = state.activeSlug) {
+  const demo = getDemo(slug);
+  const edaHref = demo ? `#/dataset/${demo.slug}` : "";
+  const benchmarkHref = demo ? `#/benchmark/${demo.slug}` : "";
+  $("topNav").innerHTML = `
+    <a class="${page === "datasets" ? "is-active" : ""}" href="#/datasets">Datasets</a>
+    ${
+      demo
+        ? `<a class="${page === "dataset" ? "is-active" : ""}" href="${escapeHtml(edaHref)}">EDA</a>`
+        : `<span class="nav-disabled">EDA</span>`
+    }
+    ${
+      demo
+        ? `<a class="${page === "benchmark" ? "is-active" : ""}" href="${escapeHtml(benchmarkHref)}">Benchmark</a>`
+        : `<span class="nav-disabled">Benchmark</span>`
+    }
+  `;
+}
+
+function renderDatasetIndex() {
+  renderTopNav("datasets");
+  setPageTitle("Datasets");
+  setStatus(`${state.demos.length} datasets ready`);
+  $("pageView").innerHTML = `
+    <section class="page-shell">
+      <header class="page-head page-head--wide">
+        <div>
+          <span class="section-kicker">Start here</span>
+          <h2>Choose your dataset</h2>
+          <p>Pick one prepared data shape, inspect its EDA page, download the source file, then run the benchmark page with example retrieval questions.</p>
+        </div>
+        <div class="quick-stats">
+          ${miniStat(state.demos.length, "Dataset types")}
+          ${miniStat(methodProfiles.length, "RAG methods")}
+          ${miniStat(totalPreparedQueries(), "Queries")}
+        </div>
+      </header>
+
+      <div class="dataset-card-grid">
+        ${state.demos.map((demo) => datasetCard(demo)).join("")}
+      </div>
+    </section>
+  `;
+}
+
+function datasetCard(demo) {
+  const file = datasetFiles[demo.slug];
+  const dataset = demo.dataset || {};
+  const metric = demo.profile?.primaryMetric || "Records";
+  return `
+    <article class="dataset-card">
+      <div class="card-kicker">
+        <span>${escapeHtml(demo.profile?.kind || "Demo dataset")}</span>
+        <b>${file ? escapeHtml(extensionLabel(file.fileName)) : "file"}</b>
+      </div>
+      <h3>${escapeHtml(demo.title)}</h3>
+      <p>${escapeHtml(demo.description || demo.profile?.focus || "Prepared benchmark dataset.")}</p>
+      <div class="dataset-stats">
+        ${miniStat(dataset.records || dataset.documents || 0, metric)}
+        ${miniStat(dataset.fields || 1, "Fields")}
+        ${miniStat(dataset.entities || 0, "Entities")}
+      </div>
+      <div class="best-fit-line">
+        ${(demo.profile?.bestFor || []).slice(0, 3).map((item) => `<span>${escapeHtml(item)}</span>`).join("")}
+      </div>
+      <div class="dataset-actions">
+        <a class="primary-button" href="#/dataset/${escapeHtml(demo.slug)}">Explore EDA</a>
+        <a class="download-button" href="#/benchmark/${escapeHtml(demo.slug)}">Benchmark</a>
+      </div>
+    </article>
+  `;
+}
+
+function renderDatasetPage(demo, file) {
   const analysis = analyzeText(file.text);
   const dataset = demo.dataset || {};
   const sampleChunks = state.chunks.slice(0, 4);
-  const benchmarkDisplay = state.benchmarkOpen ? "" : " is-hidden";
 
-  $("datasetView").innerHTML = `
-    <article class="eda-shell">
-      <header class="eda-head">
+  $("pageView").innerHTML = `
+    <article class="page-shell">
+      <header class="page-head">
         <div>
           <div class="heading-row">
             <span class="section-kicker">${escapeHtml(demo.profile?.kind || "Demo corpus")}</span>
@@ -493,7 +529,7 @@ function renderDatasetDashboard(demo, file) {
           <p>${escapeHtml(demo.profile?.focus || demo.description || "Prepared dataset.")}</p>
         </div>
         <div class="action-stack">
-          <button type="button" class="primary-button" id="startBenchmark">Let's benchmark RAG</button>
+          <a class="primary-button" href="#/benchmark/${escapeHtml(demo.slug)}">Benchmark RAG</a>
           <button type="button" class="download-button" id="downloadDataset">Download ${escapeHtml(extensionLabel(file.fileName))}</button>
         </div>
       </header>
@@ -506,8 +542,8 @@ function renderDatasetDashboard(demo, file) {
         ${statCard("Words", analysis.words)}
       </section>
 
-      <section class="insight-grid">
-        <div class="analysis-panel">
+      <section class="eda-layout">
+        <div class="analysis-panel analysis-panel--summary">
           <div class="section-title">
             <h3>EDA Summary</h3>
             <span class="section-kicker">${formatNumber(analysis.characters)} chars</span>
@@ -552,10 +588,6 @@ function renderDatasetDashboard(demo, file) {
         </div>
       </section>
 
-      <section class="benchmark-panel${benchmarkDisplay}" id="benchmarkPanel">
-        ${renderBenchmarkPanel(demo)}
-      </section>
-
       <section class="file-panel">
         <div class="file-toolbar">
           <div class="section-title">
@@ -569,54 +601,86 @@ function renderDatasetDashboard(demo, file) {
   `;
 
   $("downloadDataset").addEventListener("click", () => downloadDataset(file));
-  $("startBenchmark").addEventListener("click", () => {
-    state.benchmarkOpen = true;
-    renderDatasetDashboard(demo, file);
-    $("benchmarkPanel")?.scrollIntoView({ behavior: "smooth", block: "start" });
-  });
-  bindBenchmarkEvents(demo);
 }
 
-function renderBenchmarkPanel(demo) {
+async function fetchDatasetFile(slug) {
+  const localFile = datasetFiles[slug];
+  if (localFile) return normalizeFilePayload(slug, localFile);
+
+  const payload = await api(`/api/dataset/file?slug=${encodeURIComponent(slug)}`);
+  if (payload.text) return normalizeFilePayload(slug, payload);
+  throw new Error("Dataset file is unavailable.");
+}
+
+function normalizeFilePayload(slug, payload) {
+  const demo = localBySlug.get(slug);
+  return {
+    slug,
+    title: payload.title || demo?.title || slug,
+    fileName: payload.fileName || payload.file_name || `${slug}.txt`,
+    mime: payload.mime || "text/plain",
+    text: String(payload.text || ""),
+  };
+}
+
+function renderBenchmarkPage(demo, file) {
   const queries = benchmarkQueries[demo.slug] || [];
   const results = state.selectedQuery ? runBenchmark(state.selectedQuery) : [];
-  return `
-    <div class="benchmark-headline">
-      <div>
-        <span class="section-kicker">Benchmark</span>
-        <h3>Pick an example query</h3>
-      </div>
-      <span class="format-badge">${queries.length} prepared queries</span>
-    </div>
-    <div class="query-grid">
-      ${queries
-        .map((query, index) => {
-          const active = state.selectedQuery?.text === query.text ? " is-active" : "";
-          return `
-            <button type="button" class="query-card${active}" data-index="${index}">
-              <span>${escapeHtml(query.type)}</span>
-              <strong>${escapeHtml(query.text)}</strong>
-            </button>
-          `;
-        })
-        .join("")}
-    </div>
-    <div class="result-zone ${state.selectedQuery ? "" : "is-muted"}">
-      ${
-        state.selectedQuery
-          ? renderBenchmarkResults(results)
-          : `<div class="benchmark-empty"><h3>Choose a query to compare retrieval side by side.</h3></div>`
-      }
-    </div>
-  `;
-}
 
-function bindBenchmarkEvents(demo) {
-  $("benchmarkPanel")?.querySelectorAll(".query-card").forEach((button) => {
+  $("pageView").innerHTML = `
+    <article class="page-shell benchmark-shell">
+      <header class="page-head">
+        <div>
+          <div class="heading-row">
+            <span class="section-kicker">${escapeHtml(demo.profile?.kind || "Demo corpus")}</span>
+            <span class="format-badge">${escapeHtml(extensionLabel(file.fileName))}</span>
+          </div>
+          <h2>${escapeHtml(demo.title)}</h2>
+          <p>Choose a prepared query and compare BM25, Vector RAG, Hybrid RAG, GraphRAG, and Field-aware RAG side by side on this dataset.</p>
+        </div>
+        <div class="action-stack">
+          <a class="download-button" href="#/dataset/${escapeHtml(demo.slug)}">Back to EDA</a>
+          <button type="button" class="download-button" id="downloadDataset">Download ${escapeHtml(extensionLabel(file.fileName))}</button>
+        </div>
+      </header>
+
+      <section class="benchmark-layout">
+        <aside class="query-panel-page">
+          <div class="section-title">
+            <h3>Example Queries</h3>
+            <span class="section-kicker">${queries.length} prepared</span>
+          </div>
+          <div class="query-grid">
+            ${queries
+              .map((query, index) => {
+                const active = state.selectedQuery?.text === query.text ? " is-active" : "";
+                return `
+                  <button type="button" class="query-card${active}" data-index="${index}">
+                    <span>${escapeHtml(query.type)}</span>
+                    <strong>${escapeHtml(query.text)}</strong>
+                  </button>
+                `;
+              })
+              .join("")}
+          </div>
+        </aside>
+
+        <section class="result-zone ${state.selectedQuery ? "" : "is-muted"}" id="resultZone">
+          ${
+            state.selectedQuery
+              ? renderBenchmarkResults(results)
+              : `<div class="benchmark-empty"><h3>Select a query to run the side-by-side retrieval benchmark.</h3></div>`
+          }
+        </section>
+      </section>
+    </article>
+  `;
+
+  $("downloadDataset").addEventListener("click", () => downloadDataset(file));
+  $("pageView").querySelectorAll(".query-card").forEach((button) => {
     button.addEventListener("click", () => {
       state.selectedQuery = benchmarkQueries[demo.slug][Number(button.dataset.index)];
-      renderDatasetDashboard(demo, state.activeFile);
-      $("benchmarkPanel")?.scrollIntoView({ behavior: "smooth", block: "start" });
+      renderBenchmarkPage(demo, state.activeFile);
     });
   });
 }
@@ -668,6 +732,40 @@ function methodCard(result, index) {
 
 function metric(label, value) {
   return `<span><b>${escapeHtml(value)}</b><small>${escapeHtml(label)}</small></span>`;
+}
+
+function renderErrorPage(message) {
+  renderTopNav("datasets");
+  setPageTitle("Datasets");
+  setStatus("Load failed");
+  $("pageView").innerHTML = `
+    <section class="empty-state">
+      <h2>${escapeHtml(message)}</h2>
+      <a class="primary-button" href="#/datasets">Back to datasets</a>
+    </section>
+  `;
+}
+
+function getDemo(slug) {
+  return state.demos.find((item) => item.slug === slug) || localBySlug.get(slug);
+}
+
+function setPageTitle(title) {
+  $("pageTitle").textContent = title;
+  document.title = title === "Datasets" ? "RAGLab" : `${title} | RAGLab`;
+}
+
+function miniStat(value, label) {
+  return `
+    <span class="mini-stat">
+      <strong>${escapeHtml(formatNumber(value))}</strong>
+      <small>${escapeHtml(label)}</small>
+    </span>
+  `;
+}
+
+function totalPreparedQueries() {
+  return Object.values(benchmarkQueries).reduce((total, queries) => total + queries.length, 0);
 }
 
 function runBenchmark(query) {
