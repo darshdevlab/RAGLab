@@ -324,11 +324,14 @@ const state = {
   chunks: [],
   customPrompt: "",
   demos: [],
+  processingQuery: null,
   selectedQuery: null,
+  suggestionsVisible: true,
 };
 
 const $ = (id) => document.getElementById(id);
 const localBySlug = new Map(localDemos.map((demo) => [demo.slug, demo]));
+let benchmarkTimer = null;
 
 document.addEventListener("DOMContentLoaded", init);
 window.addEventListener("hashchange", renderRoute);
@@ -399,9 +402,12 @@ async function ensureDataset(slug) {
   if (state.activeSlug === slug && state.activeFile) return;
 
   setStatus("Loading dataset");
+  cancelBenchmarkTimer();
   state.activeSlug = slug;
   state.selectedQuery = null;
+  state.processingQuery = null;
   state.customPrompt = "";
+  state.suggestionsVisible = true;
   state.activeFile = await fetchDatasetFile(slug);
   state.chunks = createChunks(slug, state.activeFile);
   setStatus("Dataset loaded");
@@ -415,7 +421,7 @@ function renderChatWorkspace(errorMessage = "") {
   const results = demo && state.selectedQuery ? runBenchmark(state.selectedQuery) : [];
 
   setPageTitle("RAG Chat Benchmark");
-  setStatus(demo ? `${state.chunks.length} chunks ready` : `${state.demos.length} datasets ready`);
+  setStatus(state.processingQuery ? "Benchmarking RAG methods" : demo ? `${state.chunks.length} chunks ready` : `${state.demos.length} datasets ready`);
 
   $("pageView").innerHTML = `
     <section class="chat-workspace">
@@ -442,10 +448,12 @@ function renderChatWorkspace(errorMessage = "") {
       <main class="chat-main">
         <section class="chat-thread" id="chatThread">
           ${renderChatIntro(demo, file, analysis, errorMessage)}
-          ${demo && !state.selectedQuery ? renderEmptyChatSpace() : ""}
+          ${demo && !state.selectedQuery && !state.processingQuery ? renderEmptyChatSpace() : ""}
+          ${demo && state.processingQuery ? renderProcessingConversation(state.processingQuery) : ""}
           ${demo && state.selectedQuery ? renderBenchmarkConversation(state.selectedQuery, results) : ""}
         </section>
         <div class="chat-input-stack">
+          ${demo ? renderInputToolbar() : ""}
           ${demo ? renderQueryOptions(queries) : ""}
           ${renderPromptComposer(demo)}
         </div>
@@ -572,6 +580,8 @@ function renderChatIntro(demo, file, analysis, errorMessage) {
 
 function renderQueryOptions(queries) {
   if (!queries.length) return "";
+  if (!state.suggestionsVisible) return "";
+
   return `
     <section class="query-option-panel">
       <div class="section-title">
@@ -595,6 +605,22 @@ function renderQueryOptions(queries) {
   `;
 }
 
+function renderInputToolbar() {
+  const hasChat = state.processingQuery || state.selectedQuery;
+  if (state.suggestionsVisible && !hasChat) return "";
+
+  return `
+    <div class="input-toolbar">
+      ${
+        state.suggestionsVisible
+          ? `<span class="input-hint">Press Enter to run, Shift + Enter for a new line</span>`
+          : `<button type="button" class="toolbar-button" id="showSuggestions">Show suggested queries <span aria-hidden="true">↓</span></button>`
+      }
+      ${hasChat ? `<button type="button" class="toolbar-button" id="clearChat">Clear chat</button>` : ""}
+    </div>
+  `;
+}
+
 function renderBenchmarkConversation(query, results) {
   const telemetry = retrievalTelemetry(query, results);
   return `
@@ -614,6 +640,31 @@ function renderBenchmarkConversation(query, results) {
   `;
 }
 
+function renderProcessingConversation(query) {
+  return `
+    <article class="chat-message user-message">
+      <div class="message-bubble">
+        <span class="message-label">${query.custom ? "Custom prompt" : "Prepared query"}</span>
+        <p>${escapeHtml(query.text)}</p>
+      </div>
+    </article>
+
+    <article class="chat-message assistant-message">
+      <span class="avatar">RL</span>
+      <div class="message-bubble processing-bubble">
+        <span class="message-label">Running benchmark</span>
+        <div class="processing-row">
+          <span class="processing-dot"></span>
+          <span class="processing-dot"></span>
+          <span class="processing-dot"></span>
+          <strong>Retrieving chunks and scoring RAG methods</strong>
+        </div>
+        <p>Preparing side-by-side retrieval, token usage, latency, relevance, and evidence metrics.</p>
+      </div>
+    </article>
+  `;
+}
+
 function renderPromptComposer(demo) {
   return `
     <form class="prompt-composer" id="queryForm">
@@ -625,7 +676,6 @@ function renderPromptComposer(demo) {
         placeholder="${demo ? "Ask a custom retrieval question for this dataset" : "Select a dataset first"}"
       >${escapeHtml(state.customPrompt)}</textarea>
       <div class="composer-actions">
-        <button type="button" class="download-button" id="clearQuery" ${demo && (state.selectedQuery || state.customPrompt) ? "" : "disabled"}>Clear</button>
         <button type="submit" class="primary-button" ${demo ? "" : "disabled"}>Run benchmark</button>
       </div>
     </form>
@@ -642,18 +692,30 @@ function bindChatEvents(demo) {
   $("pageView").querySelectorAll(".query-card").forEach((button) => {
     button.addEventListener("click", () => {
       const query = (benchmarkQueries[demo.slug] || [])[Number(button.dataset.queryIndex)];
+      cancelBenchmarkTimer();
       state.customPrompt = query?.text || "";
       state.selectedQuery = null;
+      state.processingQuery = null;
+      state.suggestionsVisible = true;
       renderChatWorkspace();
       $("customPrompt")?.focus();
     });
   });
 
   $("downloadDataset")?.addEventListener("click", () => downloadDataset(state.activeFile));
-  $("clearQuery")?.addEventListener("click", () => {
-    state.selectedQuery = null;
-    state.customPrompt = "";
+  $("showSuggestions")?.addEventListener("click", () => {
+    state.suggestionsVisible = true;
     renderChatWorkspace();
+    $("customPrompt")?.focus();
+  });
+  $("clearChat")?.addEventListener("click", () => {
+    cancelBenchmarkTimer();
+    state.selectedQuery = null;
+    state.processingQuery = null;
+    state.customPrompt = "";
+    state.suggestionsVisible = true;
+    renderChatWorkspace();
+    $("customPrompt")?.focus();
   });
 
   $("queryForm")?.addEventListener("submit", (event) => {
@@ -661,11 +723,39 @@ function bindChatEvents(demo) {
     if (!demo) return;
     const text = $("customPrompt").value.trim();
     if (!text) return;
-    state.customPrompt = text;
-    state.selectedQuery = buildBenchmarkQuery(text, demo);
+    startBenchmark(buildBenchmarkQuery(text, demo));
+  });
+
+  $("customPrompt")?.addEventListener("keydown", (event) => {
+    if (event.key === "Enter" && !event.shiftKey) {
+      event.preventDefault();
+      $("queryForm")?.requestSubmit();
+    }
+  });
+}
+
+function startBenchmark(query) {
+  cancelBenchmarkTimer();
+  state.customPrompt = "";
+  state.selectedQuery = null;
+  state.processingQuery = query;
+  state.suggestionsVisible = false;
+  renderChatWorkspace();
+  scrollChatToBottom();
+
+  benchmarkTimer = window.setTimeout(() => {
+    state.selectedQuery = query;
+    state.processingQuery = null;
+    benchmarkTimer = null;
     renderChatWorkspace();
     scrollChatToBottom();
-  });
+  }, 900);
+}
+
+function cancelBenchmarkTimer() {
+  if (!benchmarkTimer) return;
+  window.clearTimeout(benchmarkTimer);
+  benchmarkTimer = null;
 }
 
 async function fetchDatasetFile(slug) {
