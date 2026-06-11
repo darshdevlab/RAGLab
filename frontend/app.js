@@ -322,6 +322,7 @@ const state = {
   activeFile: null,
   activeSlug: "",
   chunks: [],
+  customPrompt: "",
   demos: [],
   selectedQuery: null,
 };
@@ -376,231 +377,317 @@ function mergeDemo(remote) {
 
 function parseRoute() {
   const raw = window.location.hash.replace(/^#\/?/, "").trim();
-  if (!raw) return { page: "datasets", slug: "" };
-
   const parts = raw.split("/").filter(Boolean);
-  if (parts.length === 1 && getDemo(parts[0])) return { page: "dataset", slug: parts[0] };
-  return { page: parts[0] || "datasets", slug: parts[1] || "" };
+  if (!parts.length) return { slug: "" };
+  if (parts.length === 1 && getDemo(parts[0])) return { slug: parts[0] };
+  return { slug: parts[1] || "" };
 }
 
 async function renderRoute() {
-  const route = parseRoute();
-  const page = ["datasets", "dataset", "benchmark"].includes(route.page) ? route.page : "datasets";
-
-  if (page === "dataset" && route.slug) {
-    await renderDatasetRoute(route.slug);
-    return;
-  }
-
-  if (page === "benchmark" && route.slug) {
-    await renderBenchmarkRoute(route.slug);
-    return;
-  }
-
-  renderDatasetIndex();
-}
-
-async function renderDatasetRoute(slug) {
+  const { slug } = parseRoute();
   try {
-    await ensureDataset(slug);
-    const demo = getDemo(slug);
-    renderTopNav("dataset", slug);
-    setPageTitle("EDA");
-    setStatus("EDA ready");
-    renderDatasetPage(demo, state.activeFile);
+    if (slug) await ensureDataset(slug);
+    renderChatWorkspace();
   } catch (error) {
-    renderErrorPage(error.message || "Dataset could not be loaded.");
-  }
-}
-
-async function renderBenchmarkRoute(slug) {
-  try {
-    await ensureDataset(slug);
-    const demo = getDemo(slug);
-    renderTopNav("benchmark", slug);
-    setPageTitle("Benchmark");
-    setStatus("Benchmark ready");
-    renderBenchmarkPage(demo, state.activeFile);
-  } catch (error) {
-    renderErrorPage(error.message || "Benchmark could not be loaded.");
+    renderChatWorkspace(error.message || "Dataset could not be loaded.");
   }
 }
 
 async function ensureDataset(slug) {
   const demo = getDemo(slug);
   if (!demo) throw new Error("Dataset not found.");
-
   if (state.activeSlug === slug && state.activeFile) return;
 
   setStatus("Loading dataset");
   state.activeSlug = slug;
   state.selectedQuery = null;
+  state.customPrompt = "";
   state.activeFile = await fetchDatasetFile(slug);
   state.chunks = createChunks(slug, state.activeFile);
+  setStatus("Dataset loaded");
 }
 
-function renderTopNav(page, slug = state.activeSlug) {
-  const demo = getDemo(slug);
-  const edaHref = demo ? `#/dataset/${demo.slug}` : "";
-  const benchmarkHref = demo ? `#/benchmark/${demo.slug}` : "";
-  $("topNav").innerHTML = `
-    <a class="${page === "datasets" ? "is-active" : ""}" href="#/datasets">Datasets</a>
-    ${
-      demo
-        ? `<a class="${page === "dataset" ? "is-active" : ""}" href="${escapeHtml(edaHref)}">EDA</a>`
-        : `<span class="nav-disabled">EDA</span>`
-    }
-    ${
-      demo
-        ? `<a class="${page === "benchmark" ? "is-active" : ""}" href="${escapeHtml(benchmarkHref)}">Benchmark</a>`
-        : `<span class="nav-disabled">Benchmark</span>`
-    }
+function renderChatWorkspace(errorMessage = "") {
+  const demo = getDemo(state.activeSlug);
+  const file = demo ? state.activeFile : null;
+  const analysis = file ? analyzeText(file.text) : null;
+  const queries = demo ? benchmarkQueries[demo.slug] || [] : [];
+  const results = demo && state.selectedQuery ? runBenchmark(state.selectedQuery) : [];
+
+  setPageTitle("RAG Chat Benchmark");
+  setStatus(demo ? `${state.chunks.length} chunks ready` : `${state.demos.length} datasets ready`);
+
+  $("pageView").innerHTML = `
+    <section class="chat-workspace">
+      <aside class="chat-sidebar">
+        <div class="sidebar-section dataset-section">
+          <div class="section-title">
+            <h2>Datasets</h2>
+            <span class="section-kicker">${state.demos.length} ready</span>
+          </div>
+          <div class="dataset-menu">
+            ${state.demos.map((item) => datasetMenuItem(item)).join("")}
+          </div>
+        </div>
+
+        <div class="sidebar-section eda-section">
+          ${
+            demo && file && analysis
+              ? renderSidebarEda(demo, file, analysis)
+              : renderSidebarPlaceholder(errorMessage)
+          }
+        </div>
+      </aside>
+
+      <main class="chat-main">
+        ${renderChatHeader(demo, file)}
+        <section class="chat-thread" id="chatThread">
+          ${renderChatIntro(demo, file, analysis, errorMessage)}
+          ${demo ? renderQueryOptions(queries) : ""}
+          ${demo && state.selectedQuery ? renderBenchmarkConversation(state.selectedQuery, results) : ""}
+        </section>
+        ${renderPromptComposer(demo)}
+      </main>
+    </section>
+  `;
+
+  bindChatEvents(demo);
+}
+
+function datasetMenuItem(demo) {
+  const file = datasetFiles[demo.slug];
+  const active = demo.slug === state.activeSlug ? " is-active" : "";
+  return `
+    <button type="button" class="dataset-menu-item${active}" data-slug="${escapeHtml(demo.slug)}">
+      <span>${escapeHtml(demo.profile?.kind || "Demo dataset")}</span>
+      <strong>${escapeHtml(demo.title)}</strong>
+      <small>${file ? escapeHtml(extensionLabel(file.fileName)) : "file"}</small>
+    </button>
   `;
 }
 
-function renderDatasetIndex() {
-  renderTopNav("datasets");
-  setPageTitle("Datasets");
-  setStatus(`${state.demos.length} datasets ready`);
-  $("pageView").innerHTML = `
-    <section class="page-shell">
-      <header class="page-head page-head--wide">
-        <div>
-          <span class="section-kicker">Start here</span>
-          <h2>Choose your dataset</h2>
-          <p>Pick one prepared data shape, inspect its EDA page, download the source file, then run the benchmark page with example retrieval questions.</p>
-        </div>
-        <div class="quick-stats">
-          ${miniStat(state.demos.length, "Dataset types")}
-          ${miniStat(methodProfiles.length, "RAG methods")}
-          ${miniStat(totalPreparedQueries(), "Queries")}
-        </div>
-      </header>
+function renderSidebarPlaceholder(errorMessage) {
+  return `
+    <div class="eda-empty">
+      <span class="section-kicker">EDA</span>
+      <h2>${errorMessage ? escapeHtml(errorMessage) : "Select a dataset"}</h2>
+      <p>Dataset profile, sample rows, top terms, chunks, and download controls will appear here.</p>
+    </div>
+  `;
+}
 
-      <div class="dataset-card-grid">
-        ${state.demos.map((demo) => datasetCard(demo)).join("")}
+function renderSidebarEda(demo, file, analysis) {
+  const dataset = demo.dataset || {};
+  const sampleChunks = state.chunks.slice(0, 2);
+  return `
+    <div class="eda-card">
+      <div class="eda-title">
+        <div>
+          <span class="section-kicker">EDA</span>
+          <h2>${escapeHtml(demo.title)}</h2>
+        </div>
+        <span class="format-badge">${escapeHtml(extensionLabel(file.fileName))}</span>
+      </div>
+      <p>${escapeHtml(demo.profile?.focus || demo.description || "Prepared dataset.")}</p>
+
+      <div class="sidebar-stats">
+        ${miniStat(dataset.records || dataset.documents || analysis.paragraphs, demo.profile?.primaryMetric || "Records")}
+        ${miniStat(dataset.fields || analysis.headings.length || 1, "Fields")}
+        ${miniStat(state.chunks.length || dataset.chunks || analysis.paragraphs, "Chunks")}
+        ${miniStat(analysis.words, "Words")}
+      </div>
+
+      <div class="eda-block">
+        <div class="section-title">
+          <h3>Best Fit</h3>
+        </div>
+        <div class="fit-list">
+          ${(demo.profile?.bestFor || ["Hybrid RAG", "BM25", "Vector RAG"])
+            .map((item, index) => `<span><b>${index + 1}</b>${escapeHtml(item)}</span>`)
+            .join("")}
+        </div>
+      </div>
+
+      <div class="eda-block">
+        <div class="section-title">
+          <h3>Top Terms</h3>
+        </div>
+        <div class="term-list">${renderTerms(analysis.topTerms)}</div>
+      </div>
+
+      <div class="eda-block">
+        <div class="section-title">
+          <h3>Sample</h3>
+        </div>
+        <div class="sidebar-samples">
+          ${sampleChunks.map((chunk) => sampleCard(chunk)).join("")}
+        </div>
+      </div>
+
+      <div class="eda-actions">
+        <button type="button" class="download-button" id="downloadDataset">Download dataset</button>
+      </div>
+    </div>
+  `;
+}
+
+function renderChatHeader(demo, file) {
+  return `
+    <header class="chat-header">
+      <div>
+        <span class="section-kicker">Benchmark Chat</span>
+        <h2>${demo ? escapeHtml(demo.title) : "Choose a dataset to begin"}</h2>
+      </div>
+      ${
+        demo
+          ? `<div class="selected-dataset"><span>Dataset selected</span><strong>${escapeHtml(extensionLabel(file.fileName))}</strong></div>`
+          : `<div class="selected-dataset"><span>No dataset</span><strong>Select left</strong></div>`
+      }
+    </header>
+  `;
+}
+
+function renderChatIntro(demo, file, analysis, errorMessage) {
+  if (errorMessage) {
+    return `
+      <article class="chat-message assistant-message">
+        <span class="avatar">RL</span>
+        <div class="message-bubble">
+          <h3>Dataset load failed</h3>
+          <p>${escapeHtml(errorMessage)}</p>
+        </div>
+      </article>
+    `;
+  }
+
+  if (!demo || !file || !analysis) {
+    return `
+      <article class="chat-message assistant-message">
+        <span class="avatar">RL</span>
+        <div class="message-bubble">
+          <h3>Select a dataset from the left</h3>
+          <p>The chat will load the selected dataset, show EDA in the sidebar, and let you benchmark prepared or custom retrieval questions.</p>
+          <div class="welcome-stats">
+            ${miniStat(state.demos.length, "Dataset types")}
+            ${miniStat(methodProfiles.length, "RAG methods")}
+            ${miniStat(totalPreparedQueries(), "Example queries")}
+          </div>
+        </div>
+      </article>
+    `;
+  }
+
+  return `
+    <article class="chat-message assistant-message">
+      <span class="avatar">RL</span>
+      <div class="message-bubble">
+        <h3>Dataset loaded: ${escapeHtml(demo.title)}</h3>
+        <p>I indexed ${formatNumber(state.chunks.length)} chunks from ${escapeHtml(file.fileName)}. Pick an example query or write your own prompt to compare retrieval behavior across RAG methods.</p>
+        <div class="context-strip">
+          ${miniStat(analysis.words, "Words")}
+          ${miniStat(state.chunks.length, "Chunks")}
+          ${miniStat((benchmarkQueries[demo.slug] || []).length, "Queries")}
+        </div>
+      </div>
+    </article>
+  `;
+}
+
+function renderQueryOptions(queries) {
+  if (!queries.length) return "";
+  return `
+    <section class="query-option-panel">
+      <div class="section-title">
+        <h3>Example query options</h3>
+        <span class="section-kicker">click to run</span>
+      </div>
+      <div class="query-grid">
+        ${queries
+          .map((query, index) => {
+            const active = state.selectedQuery?.text === query.text ? " is-active" : "";
+            return `
+              <button type="button" class="query-card${active}" data-query-index="${index}">
+                <span>${escapeHtml(query.type)}</span>
+                <strong>${escapeHtml(query.text)}</strong>
+              </button>
+            `;
+          })
+          .join("")}
       </div>
     </section>
   `;
 }
 
-function datasetCard(demo) {
-  const file = datasetFiles[demo.slug];
-  const dataset = demo.dataset || {};
-  const metric = demo.profile?.primaryMetric || "Records";
+function renderBenchmarkConversation(query, results) {
+  const telemetry = retrievalTelemetry(query, results);
   return `
-    <article class="dataset-card">
-      <div class="card-kicker">
-        <span>${escapeHtml(demo.profile?.kind || "Demo dataset")}</span>
-        <b>${file ? escapeHtml(extensionLabel(file.fileName)) : "file"}</b>
+    <article class="chat-message user-message">
+      <div class="message-bubble">
+        <span class="message-label">${query.custom ? "Custom prompt" : "Prepared query"}</span>
+        <p>${escapeHtml(query.text)}</p>
       </div>
-      <h3>${escapeHtml(demo.title)}</h3>
-      <p>${escapeHtml(demo.description || demo.profile?.focus || "Prepared benchmark dataset.")}</p>
-      <div class="dataset-stats">
-        ${miniStat(dataset.records || dataset.documents || 0, metric)}
-        ${miniStat(dataset.fields || 1, "Fields")}
-        ${miniStat(dataset.entities || 0, "Entities")}
-      </div>
-      <div class="best-fit-line">
-        ${(demo.profile?.bestFor || []).slice(0, 3).map((item) => `<span>${escapeHtml(item)}</span>`).join("")}
-      </div>
-      <div class="dataset-actions">
-        <a class="primary-button" href="#/dataset/${escapeHtml(demo.slug)}">Explore EDA</a>
-        <a class="download-button" href="#/benchmark/${escapeHtml(demo.slug)}">Benchmark</a>
+    </article>
+
+    <article class="chat-message assistant-message">
+      <span class="avatar">RL</span>
+      <div class="message-bubble result-bubble">
+        ${renderBenchmarkResults(results, telemetry)}
       </div>
     </article>
   `;
 }
 
-function renderDatasetPage(demo, file) {
-  const analysis = analyzeText(file.text);
-  const dataset = demo.dataset || {};
-  const sampleChunks = state.chunks.slice(0, 4);
-
-  $("pageView").innerHTML = `
-    <article class="page-shell">
-      <header class="page-head">
-        <div>
-          <div class="heading-row">
-            <span class="section-kicker">${escapeHtml(demo.profile?.kind || "Demo corpus")}</span>
-            <span class="format-badge">${escapeHtml(extensionLabel(file.fileName))}</span>
-          </div>
-          <h2>${escapeHtml(demo.title)}</h2>
-          <p>${escapeHtml(demo.profile?.focus || demo.description || "Prepared dataset.")}</p>
-        </div>
-        <div class="action-stack">
-          <a class="primary-button" href="#/benchmark/${escapeHtml(demo.slug)}">Benchmark RAG</a>
-          <button type="button" class="download-button" id="downloadDataset">Download ${escapeHtml(extensionLabel(file.fileName))}</button>
-        </div>
-      </header>
-
-      <section class="stat-grid">
-        ${statCard(demo.profile?.primaryMetric || "Records", dataset.records || dataset.documents || analysis.paragraphs)}
-        ${statCard("Fields", dataset.fields || analysis.headings.length || 1)}
-        ${statCard("Chunks", state.chunks.length || dataset.chunks || analysis.paragraphs)}
-        ${statCard("Entities", dataset.entities || 0)}
-        ${statCard("Words", analysis.words)}
-      </section>
-
-      <section class="eda-layout">
-        <div class="analysis-panel analysis-panel--summary">
-          <div class="section-title">
-            <h3>EDA Summary</h3>
-            <span class="section-kicker">${formatNumber(analysis.characters)} chars</span>
-          </div>
-          <div class="summary-list">
-            ${summaryRow("Type", demo.profile?.kind || "Demo dataset")}
-            ${summaryRow("Source", demo.source || dataset.source || "demo")}
-            ${summaryRow("File", file.fileName)}
-            ${summaryRow("Structure", `${analysis.lines} lines, ${analysis.paragraphs} blocks, ${analysis.sentences} sentences`)}
-            ${summaryRow("Ingestion", demo.profile?.ingestion || "Load as text, chunk, embed, and index.")}
-          </div>
-        </div>
-
-        <div class="analysis-panel">
-          <div class="section-title">
-            <h3>Best Fit</h3>
-            <span class="section-kicker">retrievers</span>
-          </div>
-          <div class="fit-list">
-            ${(demo.profile?.bestFor || ["Hybrid RAG", "BM25", "Vector RAG"])
-              .map((item, index) => `<span><b>${index + 1}</b>${escapeHtml(item)}</span>`)
-              .join("")}
-          </div>
-        </div>
-
-        <div class="analysis-panel">
-          <div class="section-title">
-            <h3>Top Terms</h3>
-            <span class="section-kicker">frequency</span>
-          </div>
-          <div class="term-list">${renderTerms(analysis.topTerms)}</div>
-        </div>
-      </section>
-
-      <section class="sample-panel">
-        <div class="section-title">
-          <h3>Sample Data</h3>
-          <span class="section-kicker">${escapeHtml(file.fileName)}</span>
-        </div>
-        <div class="sample-grid">
-          ${sampleChunks.map((chunk) => sampleCard(chunk)).join("")}
-        </div>
-      </section>
-
-      <section class="file-panel">
-        <div class="file-toolbar">
-          <div class="section-title">
-            <h3>Raw File Preview</h3>
-          </div>
-          <span class="file-name">${escapeHtml(file.fileName)}</span>
-        </div>
-        <pre class="file-preview">${escapeHtml(file.text)}</pre>
-      </section>
-    </article>
+function renderPromptComposer(demo) {
+  return `
+    <form class="prompt-composer" id="queryForm">
+      <textarea
+        id="customPrompt"
+        name="customPrompt"
+        rows="2"
+        ${demo ? "" : "disabled"}
+        placeholder="${demo ? "Ask a custom retrieval question for this dataset" : "Select a dataset first"}"
+      >${escapeHtml(state.customPrompt)}</textarea>
+      <div class="composer-actions">
+        <button type="button" class="download-button" id="clearQuery" ${demo && state.selectedQuery ? "" : "disabled"}>Clear</button>
+        <button type="submit" class="primary-button" ${demo ? "" : "disabled"}>Run benchmark</button>
+      </div>
+    </form>
   `;
+}
 
-  $("downloadDataset").addEventListener("click", () => downloadDataset(file));
+function bindChatEvents(demo) {
+  $("pageView").querySelectorAll(".dataset-menu-item").forEach((button) => {
+    button.addEventListener("click", () => {
+      window.location.hash = `#/chat/${button.dataset.slug}`;
+    });
+  });
+
+  $("pageView").querySelectorAll(".query-card").forEach((button) => {
+    button.addEventListener("click", () => {
+      state.customPrompt = "";
+      state.selectedQuery = (benchmarkQueries[demo.slug] || [])[Number(button.dataset.queryIndex)];
+      renderChatWorkspace();
+      scrollChatToBottom();
+    });
+  });
+
+  $("downloadDataset")?.addEventListener("click", () => downloadDataset(state.activeFile));
+  $("clearQuery")?.addEventListener("click", () => {
+    state.selectedQuery = null;
+    state.customPrompt = "";
+    renderChatWorkspace();
+  });
+
+  $("queryForm")?.addEventListener("submit", (event) => {
+    event.preventDefault();
+    if (!demo) return;
+    const text = $("customPrompt").value.trim();
+    if (!text) return;
+    state.customPrompt = text;
+    state.selectedQuery = buildCustomQuery(text);
+    renderChatWorkspace();
+    scrollChatToBottom();
+  });
 }
 
 async function fetchDatasetFile(slug) {
@@ -623,78 +710,49 @@ function normalizeFilePayload(slug, payload) {
   };
 }
 
-function renderBenchmarkPage(demo, file) {
-  const queries = benchmarkQueries[demo.slug] || [];
-  const results = state.selectedQuery ? runBenchmark(state.selectedQuery) : [];
-
-  $("pageView").innerHTML = `
-    <article class="page-shell benchmark-shell">
-      <header class="page-head">
-        <div>
-          <div class="heading-row">
-            <span class="section-kicker">${escapeHtml(demo.profile?.kind || "Demo corpus")}</span>
-            <span class="format-badge">${escapeHtml(extensionLabel(file.fileName))}</span>
-          </div>
-          <h2>${escapeHtml(demo.title)}</h2>
-          <p>Choose a prepared query and compare BM25, Vector RAG, Hybrid RAG, GraphRAG, and Field-aware RAG side by side on this dataset.</p>
-        </div>
-        <div class="action-stack">
-          <a class="download-button" href="#/dataset/${escapeHtml(demo.slug)}">Back to EDA</a>
-          <button type="button" class="download-button" id="downloadDataset">Download ${escapeHtml(extensionLabel(file.fileName))}</button>
-        </div>
-      </header>
-
-      <section class="benchmark-layout">
-        <aside class="query-panel-page">
-          <div class="section-title">
-            <h3>Example Queries</h3>
-            <span class="section-kicker">${queries.length} prepared</span>
-          </div>
-          <div class="query-grid">
-            ${queries
-              .map((query, index) => {
-                const active = state.selectedQuery?.text === query.text ? " is-active" : "";
-                return `
-                  <button type="button" class="query-card${active}" data-index="${index}">
-                    <span>${escapeHtml(query.type)}</span>
-                    <strong>${escapeHtml(query.text)}</strong>
-                  </button>
-                `;
-              })
-              .join("")}
-          </div>
-        </aside>
-
-        <section class="result-zone ${state.selectedQuery ? "" : "is-muted"}" id="resultZone">
-          ${
-            state.selectedQuery
-              ? renderBenchmarkResults(results)
-              : `<div class="benchmark-empty"><h3>Select a query to run the side-by-side retrieval benchmark.</h3></div>`
-          }
-        </section>
-      </section>
-    </article>
-  `;
-
-  $("downloadDataset").addEventListener("click", () => downloadDataset(file));
-  $("pageView").querySelectorAll(".query-card").forEach((button) => {
-    button.addEventListener("click", () => {
-      state.selectedQuery = benchmarkQueries[demo.slug][Number(button.dataset.index)];
-      renderBenchmarkPage(demo, state.activeFile);
-    });
-  });
+function buildCustomQuery(text) {
+  const tokens = tokenize(text).filter((token) => token.length > 2);
+  return {
+    custom: true,
+    terms: [...new Set(tokens)].slice(0, 10),
+    text,
+    type: inferQueryType(text),
+  };
 }
 
-function renderBenchmarkResults(results) {
+function inferQueryType(text) {
+  const lower = text.toLowerCase();
+  if (/\b(which|where|status|region|plan|ticket|order|field|filter)\b/.test(lower)) return "filter";
+  if (/\b(connect|connected|relationship|dependency|combine|graph|link)\b/.test(lower)) return "relationship";
+  if (/\b(exact|id|code|policy|threshold|sev|ord-|tck-)\b/.test(lower)) return "exact";
+  if (/\b(similar|why|explain|meaning|semantic|broad)\b/.test(lower)) return "semantic";
+  return "mixed";
+}
+
+function renderBenchmarkResults(results, telemetry) {
   const winner = results[0];
   return `
-    <div class="winner-band">
+    <div class="answer-summary">
       <div>
-        <span class="section-kicker">Recommended</span>
+        <span class="section-kicker">Recommended retriever</span>
         <h3>${escapeHtml(winner.label)}</h3>
       </div>
       <p>${escapeHtml(winner.reason)}</p>
     </div>
+
+    <div class="token-ledger">
+      ${miniStat(telemetry.queryTokens, "Query tokens")}
+      ${miniStat(telemetry.chunksScanned, "Chunks scanned")}
+      ${miniStat(telemetry.chunksRetrieved, "Chunks retrieved")}
+      ${miniStat(telemetry.retrievedTokens, "Retrieved tokens")}
+      ${miniStat(telemetry.contextTokens, "Context tokens")}
+    </div>
+
+    <div class="score-note">
+      <strong>Benchmarking method:</strong>
+      <span>Score = relevance 42% + term coverage 28% + method fit 20% + evidence strength 10%. Latency is estimated from method base cost and chunk count.</span>
+    </div>
+
     <div class="comparison-board">
       ${results.map((result, index) => methodCard(result, index)).join("")}
     </div>
@@ -734,16 +792,26 @@ function metric(label, value) {
   return `<span><b>${escapeHtml(value)}</b><small>${escapeHtml(label)}</small></span>`;
 }
 
-function renderErrorPage(message) {
-  renderTopNav("datasets");
-  setPageTitle("Datasets");
-  setStatus("Load failed");
-  $("pageView").innerHTML = `
-    <section class="empty-state">
-      <h2>${escapeHtml(message)}</h2>
-      <a class="primary-button" href="#/datasets">Back to datasets</a>
-    </section>
-  `;
+function retrievalTelemetry(query, results) {
+  const evidenceById = new Map();
+  results.forEach((result) => {
+    result.evidence.forEach((chunk) => evidenceById.set(chunk.id, chunk));
+  });
+  const retrievedText = [...evidenceById.values()].map((chunk) => `${chunk.title} ${chunk.text}`).join(" ");
+  const queryTokens = estimateTokens(query.text);
+  const retrievedTokens = estimateTokens(retrievedText);
+  return {
+    chunksRetrieved: evidenceById.size,
+    chunksScanned: state.chunks.length,
+    contextTokens: queryTokens + retrievedTokens,
+    queryTokens,
+    retrievedTokens,
+  };
+}
+
+function estimateTokens(text) {
+  const words = String(text || "").trim().split(/\s+/).filter(Boolean).length;
+  return Math.max(0, Math.ceil(words * 1.3));
 }
 
 function getDemo(slug) {
@@ -752,7 +820,7 @@ function getDemo(slug) {
 
 function setPageTitle(title) {
   $("pageTitle").textContent = title;
-  document.title = title === "Datasets" ? "RAGLab" : `${title} | RAGLab`;
+  document.title = title === "RAG Chat Benchmark" ? "RAGLab" : `${title} | RAGLab`;
 }
 
 function miniStat(value, label) {
@@ -766,6 +834,13 @@ function miniStat(value, label) {
 
 function totalPreparedQueries() {
   return Object.values(benchmarkQueries).reduce((total, queries) => total + queries.length, 0);
+}
+
+function scrollChatToBottom() {
+  requestAnimationFrame(() => {
+    const thread = $("chatThread");
+    if (thread) thread.scrollTop = thread.scrollHeight;
+  });
 }
 
 function runBenchmark(query) {

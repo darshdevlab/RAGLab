@@ -21,10 +21,10 @@ Built-in demo datasets:
 
 Current public UI:
 
-- `#/datasets` asks the visitor to choose a dataset and shows all prepared dataset types as cards.
-- `#/dataset/{slug}` opens a focused EDA dashboard with corpus counts, text profile, best-fit retrievers, top terms, sample records, and the loaded dataset file.
-- `#/benchmark/{slug}` opens the benchmark workspace with prepared example queries.
-- Clicking an example query compares BM25, Vector RAG, Hybrid RAG, GraphRAG, and Field-aware RAG side by side with score, relevance, coverage, latency, evidence count, and retrieved evidence.
+- The interface is a ChatGPT/Claude-style workspace with datasets on the left and a benchmark chat on the right.
+- Clicking a dataset loads compact EDA in the left sidebar: corpus counts, chunks, best-fit retrievers, top terms, samples, and a download control.
+- The chat panel shows the selected dataset, prepared query options, and a custom prompt box.
+- Running a prepared query or custom prompt compares BM25, Vector RAG, Hybrid RAG, GraphRAG, and Field-aware RAG side by side with score, relevance, coverage, latency, evidence count, retrieved evidence, and token telemetry.
 - Each dataset file can be downloaded in its own format from the browser.
 - Upload and write-memory controls remain hidden for the public portfolio demo.
 
