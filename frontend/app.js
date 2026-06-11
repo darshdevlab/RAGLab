@@ -607,15 +607,13 @@ function renderQueryOptions(queries) {
 
 function renderInputToolbar() {
   const hasChat = state.processingQuery || state.selectedQuery;
-  if (state.suggestionsVisible && !hasChat) return "";
+  const suggestionToggle = state.suggestionsVisible
+    ? `<button type="button" class="toolbar-button" id="hideSuggestions">Hide suggested queries <span aria-hidden="true">↓</span></button>`
+    : `<button type="button" class="toolbar-button" id="showSuggestions">Show suggested queries <span aria-hidden="true">↑</span></button>`;
 
   return `
     <div class="input-toolbar">
-      ${
-        state.suggestionsVisible
-          ? `<span class="input-hint">Press Enter to run, Shift + Enter for a new line</span>`
-          : `<button type="button" class="toolbar-button" id="showSuggestions">Show suggested queries <span aria-hidden="true">↓</span></button>`
-      }
+      ${suggestionToggle}
       ${hasChat ? `<button type="button" class="toolbar-button" id="clearChat">Clear chat</button>` : ""}
     </div>
   `;
@@ -705,6 +703,11 @@ function bindChatEvents(demo) {
   $("downloadDataset")?.addEventListener("click", () => downloadDataset(state.activeFile));
   $("showSuggestions")?.addEventListener("click", () => {
     state.suggestionsVisible = true;
+    renderChatWorkspace();
+    $("customPrompt")?.focus();
+  });
+  $("hideSuggestions")?.addEventListener("click", () => {
+    state.suggestionsVisible = false;
     renderChatWorkspace();
     $("customPrompt")?.focus();
   });
