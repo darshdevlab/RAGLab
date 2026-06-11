@@ -21,10 +21,12 @@ Built-in demo datasets:
 
 Current public UI:
 
-- The first screen lists only the prepared dataset names.
-- Clicking a dataset opens its EDA dashboard with corpus counts, text profile, top terms, and the loaded dataset file.
+- The first screen asks the visitor to choose a dataset and shows all prepared dataset types.
+- Clicking a dataset opens an interactive EDA dashboard with corpus counts, text profile, best-fit retrievers, top terms, sample records, and the loaded dataset file.
+- Each dataset has a "Let's benchmark RAG" action with prepared example queries.
+- Clicking an example query compares BM25, Vector RAG, Hybrid RAG, GraphRAG, and Field-aware RAG side by side with score, relevance, coverage, latency, evidence count, and retrieved evidence.
 - Each dataset file can be downloaded in its own format from the browser.
-- Query, benchmark, upload, memory, and method-comparison controls are hidden for now and can be added back one by one.
+- Upload and write-memory controls remain hidden for the public portfolio demo.
 
 The local version avoids npm, pip, and external LLM APIs so the product behavior can be verified first. The hosted version uses Supabase for seeded demo documents, chunks, pgvector embeddings, keyword search, demo memory, entities, and relations.
 

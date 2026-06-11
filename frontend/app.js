@@ -20,7 +20,6 @@ Memory RAG adds session context such as preferences, accepted facts, rejected fa
 
 GraphRAG creates entities and relationships from the corpus. Entities can include Vercel, Supabase, pgvector, BM25, Hybrid RAG, Memory RAG, GraphRAG, and citations. Relationships connect methods to strengths, limits, storage choices, and deployment decisions.`,
   },
-
   "clinical-trial": {
     fileName: "cardiomap-gold-qa.json",
     mime: "application/json",
@@ -69,7 +68,6 @@ GraphRAG creates entities and relationships from the corpus. Entities can includ
   }
 ]`,
   },
-
   "incident-runbook": {
     fileName: "northwind-incident-runbook.txt",
     mime: "text/plain",
@@ -87,7 +85,6 @@ Fallbacks: If Redis Session Cache is unavailable, Cart Service can serve stale c
 
 Recovery playbooks: rollback latest Gateway routing rule, scale Payment Service workers, disable nonessential recommendation calls, enable queue drain mode. Rollback is preferred when the latest deployment changed routing, headers, or request signing.`,
   },
-
   "support-kb": {
     fileName: "atlasdesk-support-tickets.jsonl",
     mime: "application/x-ndjson",
@@ -98,7 +95,6 @@ Recovery playbooks: rollback latest Gateway routing rule, scale Payment Service 
 {"ticket_id":"TCK-1005","plan":"Starter","intent":"deletion","priority":"normal","message":"User asks to delete attachments, ticket messages, and analytics records.","resolution":"Deletion removes attachments first, then messages, then analytics aggregates in the nightly privacy job."}
 {"ticket_id":"TCK-1006","plan":"Growth","intent":"upgrade","priority":"low","message":"Customer wants audit exports without moving all agents to Enterprise.","resolution":"Audit exports are Enterprise only; explain compliance feature boundary."}`,
   },
-
   "retail-orders-csv": {
     fileName: "retail-orders.csv",
     mime: "text/csv",
@@ -114,7 +110,6 @@ ORD-9008,2026-01-19,South,Midmarket,Analytics,640.20,delivered,false,6
 ORD-9009,2026-01-22,West,Enterprise,Data Platform,2210.00,processing,false,1
 ORD-9010,2026-01-24,East,Enterprise,Security,1765.40,delivered,false,2`,
   },
-
   "rag-method-graph": {
     fileName: "rag-method-graph.ttl",
     mime: "text/turtle",
@@ -153,6 +148,7 @@ const localDemos = [
       kind: "Unstructured document",
       focus: "Markdown notes with paragraphs, named systems, and retrieval tradeoffs.",
       primaryMetric: "Sections",
+      bestFor: ["Hybrid RAG", "GraphRAG", "BM25"],
       ingestion: "Chunk by heading and paragraph, then index with lexical, vector, hybrid, and graph methods.",
     },
     dataset: { records: 7, fields: 1, chunks: 6, entities: 34, relations: 58, avg_chunk_tokens: 66 },
@@ -166,6 +162,7 @@ const localDemos = [
       kind: "Question-answer JSON",
       focus: "Gold QA pairs for testing answer retrieval and term coverage.",
       primaryMetric: "QA pairs",
+      bestFor: ["BM25", "Hybrid RAG", "Field-aware RAG"],
       ingestion: "Treat each QA object as a supervised evaluation item with question, answer, type, and gold terms.",
     },
     dataset: { records: 6, fields: 5, chunks: 6, entities: 22, relations: 31, avg_chunk_tokens: 34 },
@@ -179,6 +176,7 @@ const localDemos = [
       kind: "Plain text runbook",
       focus: "Operational instructions, exact SEV thresholds, dependencies, and fallback actions.",
       primaryMetric: "Sections",
+      bestFor: ["BM25", "Hybrid RAG", "GraphRAG"],
       ingestion: "Split by blank lines and preserve exact incident codes for keyword and hybrid retrieval.",
     },
     dataset: { records: 7, fields: 1, chunks: 5, entities: 29, relations: 45, avg_chunk_tokens: 57 },
@@ -192,6 +190,7 @@ const localDemos = [
       kind: "Semi-structured JSONL",
       focus: "One support ticket per line with plan, intent, priority, message, and resolution fields.",
       primaryMetric: "Tickets",
+      bestFor: ["Field-aware RAG", "Hybrid RAG", "BM25"],
       ingestion: "Parse each JSONL line as a document row while keeping structured fields for filters.",
     },
     dataset: { records: 6, fields: 6, chunks: 6, entities: 24, relations: 38, avg_chunk_tokens: 30 },
@@ -205,6 +204,7 @@ const localDemos = [
       kind: "Structured CSV",
       focus: "Rows and columns with dates, regions, customer segments, order values, statuses, and delivery metrics.",
       primaryMetric: "Rows",
+      bestFor: ["Field-aware RAG", "BM25", "Hybrid RAG"],
       ingestion: "Parse as tabular data, profile columns, and create row-level text for retrieval.",
     },
     dataset: { records: 10, fields: 9, chunks: 10, entities: 18, relations: 20, avg_chunk_tokens: 19 },
@@ -218,10 +218,64 @@ const localDemos = [
       kind: "Knowledge graph triples",
       focus: "Subject-predicate-object statements connecting RAG methods, query types, tools, and deployment pieces.",
       primaryMetric: "Triples",
+      bestFor: ["GraphRAG", "Hybrid RAG", "Vector RAG"],
       ingestion: "Parse triples into entities and relations, then use graph traversal for relationship questions.",
     },
     dataset: { records: 20, fields: 3, chunks: 8, entities: 16, relations: 20, avg_chunk_tokens: 11 },
   },
+];
+
+const benchmarkQueries = {
+  "raglab-architecture": [
+    { type: "mixed", text: "Which RAG method is safest for mixed exact and semantic architecture questions?", terms: ["hybrid", "keyword", "vector", "score"] },
+    { type: "exact", text: "Where do pgvector, Supabase, and Vercel fit in the architecture?", terms: ["pgvector", "supabase", "vercel"] },
+    { type: "relationship", text: "How are GraphRAG entities connected to deployment decisions?", terms: ["graphrag", "entities", "relationships", "deployment"] },
+    { type: "semantic", text: "Why can vector retrieval miss identifiers or quoted phrases?", terms: ["vector", "exact", "identifier", "phrase"] },
+    { type: "memory", text: "What risk does uncontrolled memory add to retrieval?", terms: ["memory", "bias", "inspect", "delete"] },
+  ],
+  "clinical-trial": [
+    { type: "exact", text: "Which exclusions mention dialysis or INV-908?", terms: ["dialysis", "inv-908", "exclusion"] },
+    { type: "routing", text: "Where should chest pain with shortness of breath route?", terms: ["chest", "shortness", "red", "triage"] },
+    { type: "abbreviation", text: "What does eGFR mean?", terms: ["egfr", "estimated", "glomerular"] },
+    { type: "endpoint", text: "What is measured at week 12?", terms: ["endpoint", "systolic", "week"] },
+    { type: "device", text: "Which team handles PulseBand PB-7 alerts?", terms: ["pulseband", "device", "biomedical"] },
+  ],
+  "incident-runbook": [
+    { type: "exact", text: "What exact conditions declare SEV-1?", terms: ["sev-1", "94", "6", "5xx"] },
+    { type: "relationship", text: "How are API Gateway, Cart Service, Redis, and Payment Service connected?", terms: ["api", "gateway", "cart", "redis", "payment"] },
+    { type: "fallback", text: "When should Payment Service switch to rules-only mode?", terms: ["payment", "rules-only", "fraud", "risk"] },
+    { type: "recovery", text: "Which recovery action fits routing or request signing changes?", terms: ["rollback", "routing", "signing"] },
+    { type: "latency", text: "What condition declares SEV-2 for p95 latency?", terms: ["sev-2", "p95", "900"] },
+  ],
+  "support-kb": [
+    { type: "filter", text: "Which Enterprise ticket requests audit exports?", terms: ["enterprise", "audit", "export"] },
+    { type: "policy", text: "Which refund ticket is eligible under RFD-14?", terms: ["refund", "rfd-14", "eligible"] },
+    { type: "retention", text: "Which plan keeps closed tickets for 30 months?", terms: ["growth", "retains", "30"] },
+    { type: "workflow", text: "How does a deletion request process attachments and messages?", terms: ["deletion", "attachments", "messages", "analytics"] },
+    { type: "upgrade", text: "Which ticket says audit exports require Enterprise?", terms: ["audit", "exports", "enterprise"] },
+  ],
+  "retail-orders-csv": [
+    { type: "filter", text: "Which Enterprise orders are related to Security?", terms: ["enterprise", "security"] },
+    { type: "status", text: "Which orders requested refunds?", terms: ["refund", "true"] },
+    { type: "region", text: "Which West region orders have Analytics or Data Platform?", terms: ["west", "analytics", "data"] },
+    { type: "delivery", text: "Which delayed order had the longest delivery time?", terms: ["delayed", "8"] },
+    { type: "value", text: "Which order has value above 2000?", terms: ["2210", "ord-9009"] },
+  ],
+  "rag-method-graph": [
+    { type: "relationship", text: "What does HybridRAG combine?", terms: ["hybridrag", "combines", "bm25", "vectorrag"] },
+    { type: "graph", text: "Which method is best for DependencyQuestion?", terms: ["graphrag", "dependencyquestion"] },
+    { type: "storage", text: "What does Supabase store?", terms: ["supabase", "documents", "chunks", "embeddings"] },
+    { type: "deployment", text: "What does Vercel host?", terms: ["vercel", "frontend"] },
+    { type: "comparison", text: "Which methods does RAGLab compare?", terms: ["raglab", "compares", "hybridrag", "bm25"] },
+  ],
+};
+
+const methodProfiles = [
+  { id: "bm25", label: "BM25", strength: "Exact terms", latency: 26 },
+  { id: "vector", label: "Vector RAG", strength: "Semantic match", latency: 48 },
+  { id: "hybrid", label: "Hybrid RAG", strength: "Balanced recall", latency: 62 },
+  { id: "graph", label: "GraphRAG", strength: "Relationships", latency: 84 },
+  { id: "field", label: "Field-aware RAG", strength: "Structured filters", latency: 34 },
 ];
 
 const stopwords = new Set([
@@ -239,6 +293,7 @@ const stopwords = new Set([
   "from",
   "has",
   "have",
+  "how",
   "into",
   "must",
   "not",
@@ -256,7 +311,9 @@ const stopwords = new Set([
   "through",
   "to",
   "uses",
+  "what",
   "when",
+  "where",
   "which",
   "with",
 ]);
@@ -264,7 +321,10 @@ const stopwords = new Set([
 const state = {
   activeFile: null,
   activeSlug: "",
+  benchmarkOpen: false,
+  chunks: [],
   demos: [],
+  selectedQuery: null,
 };
 
 const $ = (id) => document.getElementById(id);
@@ -277,11 +337,13 @@ async function init() {
   const deepLinkedSlug = window.location.hash.replace("#", "");
   if (deepLinkedSlug && state.demos.some((demo) => demo.slug === deepLinkedSlug)) {
     loadDataset(deepLinkedSlug);
+  } else {
+    renderChooseState();
   }
 }
 
 async function refreshDatasets() {
-  setStatus("Loading datasets");
+  setStatus("Choose a dataset");
   try {
     const payload = await api("/api/demos");
     state.demos = mergeDemos(payload.demos || []);
@@ -338,17 +400,52 @@ function renderDatasetList() {
   });
 }
 
+function renderChooseState() {
+  $("datasetView").innerHTML = `
+    <section class="choose-panel">
+      <div class="choose-head">
+        <span class="section-kicker">Start here</span>
+        <h2>Choose your dataset</h2>
+        <p>Select a data type to inspect its shape, sample records, ingestion plan, and then benchmark RAG methods on prepared queries.</p>
+      </div>
+      <div class="choice-grid">
+        ${state.demos
+          .map((demo) => {
+            const file = datasetFiles[demo.slug];
+            const dataset = demo.dataset || {};
+            return `
+              <button type="button" class="choice-card" data-slug="${escapeHtml(demo.slug)}">
+                <span>${escapeHtml(demo.profile?.kind || "Demo dataset")} ${file ? escapeHtml(extensionLabel(file.fileName)) : ""}</span>
+                <strong>${escapeHtml(demo.title)}</strong>
+                <small>${escapeHtml(demo.description || demo.profile?.focus || "")}</small>
+                <i>${formatNumber(dataset.records || dataset.documents || 0)} ${escapeHtml((demo.profile?.primaryMetric || "records").toLowerCase())}</i>
+              </button>
+            `;
+          })
+          .join("")}
+      </div>
+    </section>
+  `;
+
+  $("datasetView").querySelectorAll(".choice-card").forEach((button) => {
+    button.addEventListener("click", () => loadDataset(button.dataset.slug));
+  });
+}
+
 async function loadDataset(slug) {
   const demo = state.demos.find((item) => item.slug === slug);
   if (!demo) return;
 
   state.activeSlug = slug;
+  state.benchmarkOpen = false;
+  state.selectedQuery = null;
   renderDatasetList();
-  setStatus("Loading dataset file");
+  setStatus("Loading dataset");
 
   try {
     const file = await fetchDatasetFile(slug);
     state.activeFile = file;
+    state.chunks = createChunks(slug, file);
     renderDatasetDashboard(demo, file);
     window.location.hash = slug;
     setStatus("Dataset loaded");
@@ -381,7 +478,8 @@ function normalizeFilePayload(slug, payload) {
 function renderDatasetDashboard(demo, file) {
   const analysis = analyzeText(file.text);
   const dataset = demo.dataset || {};
-  const description = demo.profile?.focus || demo.description || "Prepared dataset.";
+  const sampleChunks = state.chunks.slice(0, 4);
+  const benchmarkDisplay = state.benchmarkOpen ? "" : " is-hidden";
 
   $("datasetView").innerHTML = `
     <article class="eda-shell">
@@ -392,32 +490,46 @@ function renderDatasetDashboard(demo, file) {
             <span class="format-badge">${escapeHtml(extensionLabel(file.fileName))}</span>
           </div>
           <h2>${escapeHtml(demo.title)}</h2>
-          <p>${escapeHtml(description)}</p>
+          <p>${escapeHtml(demo.profile?.focus || demo.description || "Prepared dataset.")}</p>
         </div>
-        <button type="button" class="download-button" id="downloadDataset">Download ${escapeHtml(extensionLabel(file.fileName))}</button>
+        <div class="action-stack">
+          <button type="button" class="primary-button" id="startBenchmark">Let's benchmark RAG</button>
+          <button type="button" class="download-button" id="downloadDataset">Download ${escapeHtml(extensionLabel(file.fileName))}</button>
+        </div>
       </header>
 
       <section class="stat-grid">
         ${statCard(demo.profile?.primaryMetric || "Records", dataset.records || dataset.documents || analysis.paragraphs)}
         ${statCard("Fields", dataset.fields || analysis.headings.length || 1)}
-        ${statCard("Chunks", dataset.chunks || analysis.paragraphs)}
+        ${statCard("Chunks", state.chunks.length || dataset.chunks || analysis.paragraphs)}
         ${statCard("Entities", dataset.entities || 0)}
         ${statCard("Words", analysis.words)}
       </section>
 
-      <section class="eda-grid">
+      <section class="insight-grid">
         <div class="analysis-panel">
           <div class="section-title">
-            <h3>Content Profile</h3>
+            <h3>EDA Summary</h3>
             <span class="section-kicker">${formatNumber(analysis.characters)} chars</span>
           </div>
           <div class="summary-list">
             ${summaryRow("Type", demo.profile?.kind || "Demo dataset")}
             ${summaryRow("Source", demo.source || dataset.source || "demo")}
             ${summaryRow("File", file.fileName)}
-            ${summaryRow("MIME", file.mime)}
             ${summaryRow("Structure", `${analysis.lines} lines, ${analysis.paragraphs} blocks, ${analysis.sentences} sentences`)}
             ${summaryRow("Ingestion", demo.profile?.ingestion || "Load as text, chunk, embed, and index.")}
+          </div>
+        </div>
+
+        <div class="analysis-panel">
+          <div class="section-title">
+            <h3>Best Fit</h3>
+            <span class="section-kicker">retrievers</span>
+          </div>
+          <div class="fit-list">
+            ${(demo.profile?.bestFor || ["Hybrid RAG", "BM25", "Vector RAG"])
+              .map((item, index) => `<span><b>${index + 1}</b>${escapeHtml(item)}</span>`)
+              .join("")}
           </div>
         </div>
 
@@ -426,16 +538,28 @@ function renderDatasetDashboard(demo, file) {
             <h3>Top Terms</h3>
             <span class="section-kicker">frequency</span>
           </div>
-          <div class="term-list">
-            ${renderTerms(analysis.topTerms)}
-          </div>
+          <div class="term-list">${renderTerms(analysis.topTerms)}</div>
         </div>
+      </section>
+
+      <section class="sample-panel">
+        <div class="section-title">
+          <h3>Sample Data</h3>
+          <span class="section-kicker">${escapeHtml(file.fileName)}</span>
+        </div>
+        <div class="sample-grid">
+          ${sampleChunks.map((chunk) => sampleCard(chunk)).join("")}
+        </div>
+      </section>
+
+      <section class="benchmark-panel${benchmarkDisplay}" id="benchmarkPanel">
+        ${renderBenchmarkPanel(demo)}
       </section>
 
       <section class="file-panel">
         <div class="file-toolbar">
           <div class="section-title">
-            <h3>Dataset File</h3>
+            <h3>Raw File Preview</h3>
           </div>
           <span class="file-name">${escapeHtml(file.fileName)}</span>
         </div>
@@ -445,6 +569,306 @@ function renderDatasetDashboard(demo, file) {
   `;
 
   $("downloadDataset").addEventListener("click", () => downloadDataset(file));
+  $("startBenchmark").addEventListener("click", () => {
+    state.benchmarkOpen = true;
+    renderDatasetDashboard(demo, file);
+    $("benchmarkPanel")?.scrollIntoView({ behavior: "smooth", block: "start" });
+  });
+  bindBenchmarkEvents(demo);
+}
+
+function renderBenchmarkPanel(demo) {
+  const queries = benchmarkQueries[demo.slug] || [];
+  const results = state.selectedQuery ? runBenchmark(state.selectedQuery) : [];
+  return `
+    <div class="benchmark-headline">
+      <div>
+        <span class="section-kicker">Benchmark</span>
+        <h3>Pick an example query</h3>
+      </div>
+      <span class="format-badge">${queries.length} prepared queries</span>
+    </div>
+    <div class="query-grid">
+      ${queries
+        .map((query, index) => {
+          const active = state.selectedQuery?.text === query.text ? " is-active" : "";
+          return `
+            <button type="button" class="query-card${active}" data-index="${index}">
+              <span>${escapeHtml(query.type)}</span>
+              <strong>${escapeHtml(query.text)}</strong>
+            </button>
+          `;
+        })
+        .join("")}
+    </div>
+    <div class="result-zone ${state.selectedQuery ? "" : "is-muted"}">
+      ${
+        state.selectedQuery
+          ? renderBenchmarkResults(results)
+          : `<div class="benchmark-empty"><h3>Choose a query to compare retrieval side by side.</h3></div>`
+      }
+    </div>
+  `;
+}
+
+function bindBenchmarkEvents(demo) {
+  $("benchmarkPanel")?.querySelectorAll(".query-card").forEach((button) => {
+    button.addEventListener("click", () => {
+      state.selectedQuery = benchmarkQueries[demo.slug][Number(button.dataset.index)];
+      renderDatasetDashboard(demo, state.activeFile);
+      $("benchmarkPanel")?.scrollIntoView({ behavior: "smooth", block: "start" });
+    });
+  });
+}
+
+function renderBenchmarkResults(results) {
+  const winner = results[0];
+  return `
+    <div class="winner-band">
+      <div>
+        <span class="section-kicker">Recommended</span>
+        <h3>${escapeHtml(winner.label)}</h3>
+      </div>
+      <p>${escapeHtml(winner.reason)}</p>
+    </div>
+    <div class="comparison-board">
+      ${results.map((result, index) => methodCard(result, index)).join("")}
+    </div>
+  `;
+}
+
+function methodCard(result, index) {
+  const topEvidence = result.evidence[0];
+  return `
+    <article class="method-card method-card--${escapeHtml(result.id)}">
+      <div class="method-head">
+        <span class="rank-badge">#${index + 1}</span>
+        <div>
+          <strong>${escapeHtml(result.label)}</strong>
+          <small>${escapeHtml(result.strength)}</small>
+        </div>
+      </div>
+      <div class="score-meter">
+        <strong>${result.score}</strong>
+        <span><i style="width:${result.score}%"></i></span>
+      </div>
+      <div class="metric-grid">
+        ${metric("Relevance", result.relevance)}
+        ${metric("Coverage", result.coverage)}
+        ${metric("Latency", `${result.latency} ms`)}
+        ${metric("Evidence", result.evidence.length)}
+      </div>
+      <div class="evidence-box">
+        <span>${escapeHtml(topEvidence?.title || "No evidence")}</span>
+        <p>${escapeHtml(topEvidence?.text || "No matching chunk was retrieved.")}</p>
+      </div>
+    </article>
+  `;
+}
+
+function metric(label, value) {
+  return `<span><b>${escapeHtml(value)}</b><small>${escapeHtml(label)}</small></span>`;
+}
+
+function runBenchmark(query) {
+  const results = methodProfiles.map((method) => scoreMethod(method, query));
+  results.sort((left, right) => right.score - left.score || left.latency - right.latency);
+  return results;
+}
+
+function scoreMethod(method, query) {
+  const scored = state.chunks
+    .map((chunk) => ({ chunk, score: scoreChunk(method.id, query, chunk) }))
+    .sort((left, right) => right.score - left.score)
+    .slice(0, 3);
+  const top = scored[0]?.score || 0;
+  const max = Math.max(1, ...scored.map((item) => item.score));
+  const normalizedTop = Math.min(1, top / max);
+  const coverage = coverageScore(scored.map((item) => `${item.chunk.searchText} ${item.chunk.text}`).join(" "), query.terms);
+  const fit = methodFit(method.id, query.type, state.activeSlug);
+  const evidenceStrength = Math.min(1, scored.filter((item) => item.score > 0).length / 3);
+  const score = Math.round((normalizedTop * 0.42 + coverage * 0.28 + fit * 0.2 + evidenceStrength * 0.1) * 100);
+
+  return {
+    ...method,
+    score,
+    coverage: `${Math.round(coverage * 100)}%`,
+    relevance: `${Math.round(normalizedTop * 100)}%`,
+    latency: method.latency + Math.round(state.chunks.length * latencyMultiplier(method.id)),
+    evidence: scored.filter((item) => item.score > 0).map((item) => item.chunk),
+    reason: reasonFor(method.id, query.type),
+  };
+}
+
+function scoreChunk(methodId, query, chunk) {
+  const queryTokens = tokenize(query.text);
+  const chunkTokens = tokenize(chunk.searchText);
+  const tokenSet = new Set(chunkTokens);
+  const overlap = queryTokens.filter((token) => tokenSet.has(token)).length;
+  const termHits = (query.terms || []).filter((term) => chunk.searchText.toLowerCase().includes(term.toLowerCase())).length;
+  const exactBoost = termHits * 2.2;
+  const semanticBoost = queryTokens.filter((token) => chunk.searchText.toLowerCase().includes(token.slice(0, Math.min(5, token.length)))).length * 0.35;
+  const fieldBoost = Object.values(chunk.fields || {}).filter((value) => queryTokens.some((token) => String(value).toLowerCase().includes(token))).length * 1.6;
+  const graphBoost = relationTokens(chunk.searchText).filter((token) => queryTokens.includes(token)).length * 1.8;
+
+  const weights = {
+    bm25: [1.35, 2.2, 0.2, 0.4, 0.4],
+    vector: [0.65, 0.7, 1.2, 0.3, 0.7],
+    hybrid: [1.1, 1.5, 0.8, 0.7, 0.7],
+    graph: [0.7, 0.8, 0.5, 0.2, 1.9],
+    field: [0.7, 1.0, 0.2, 2.1, 0.3],
+  }[methodId];
+
+  return overlap * weights[0] + exactBoost * weights[1] + semanticBoost * weights[2] + fieldBoost * weights[3] + graphBoost * weights[4];
+}
+
+function coverageScore(text, terms) {
+  if (!terms?.length) return 0;
+  const lower = text.toLowerCase();
+  return terms.filter((term) => lower.includes(term.toLowerCase())).length / terms.length;
+}
+
+function methodFit(methodId, queryType, slug) {
+  const fitByType = {
+    exact: { bm25: 1, hybrid: 0.88, field: 0.75, vector: 0.5, graph: 0.45 },
+    relationship: { graph: 1, hybrid: 0.82, vector: 0.7, bm25: 0.55, field: 0.45 },
+    graph: { graph: 1, hybrid: 0.78, vector: 0.68, bm25: 0.52, field: 0.42 },
+    filter: { field: 1, bm25: 0.82, hybrid: 0.8, vector: 0.48, graph: 0.42 },
+    semantic: { vector: 1, hybrid: 0.86, graph: 0.65, bm25: 0.48, field: 0.38 },
+    mixed: { hybrid: 1, bm25: 0.78, vector: 0.75, graph: 0.68, field: 0.62 },
+  };
+  const slugFit = {
+    "retail-orders-csv": { field: 0.18 },
+    "support-kb": { field: 0.12 },
+    "rag-method-graph": { graph: 0.18 },
+    "clinical-trial": { bm25: 0.1, field: 0.08 },
+  };
+  return Math.min(1, (fitByType[queryType]?.[methodId] || fitByType.mixed[methodId] || 0.5) + (slugFit[slug]?.[methodId] || 0));
+}
+
+function reasonFor(methodId, queryType) {
+  const reasons = {
+    bm25: "Best when exact strings, IDs, and policy terms dominate the query.",
+    vector: "Best when wording is broad and semantic similarity matters more than exact labels.",
+    hybrid: "Strong default because it balances exact keyword hits with semantic recall.",
+    graph: "Best when the query asks about dependencies, links, or subject-predicate-object relationships.",
+    field: "Best when structured fields such as plan, status, region, or ticket intent should constrain retrieval.",
+  };
+  if (queryType === "filter" && methodId === "field") return "Structured fields make this query easier to constrain before ranking evidence.";
+  return reasons[methodId];
+}
+
+function latencyMultiplier(methodId) {
+  return { bm25: 1, vector: 2, hybrid: 3, graph: 4, field: 1.5 }[methodId] || 2;
+}
+
+function createChunks(slug, file) {
+  if (slug === "clinical-trial") return parseJsonQa(file.text);
+  if (slug === "support-kb") return parseJsonl(file.text);
+  if (slug === "retail-orders-csv") return parseCsv(file.text);
+  if (slug === "rag-method-graph") return parseTriples(file.text);
+  return parseBlocks(file.text, file.fileName);
+}
+
+function parseJsonQa(text) {
+  try {
+    return JSON.parse(text).map((item, index) => ({
+      id: item.id || `qa-${index + 1}`,
+      title: `${item.type || "QA"} ${index + 1}`,
+      text: `Q: ${item.question} A: ${item.answer} Terms: ${(item.gold_terms || []).join(", ")}`,
+      searchText: `${item.question} ${item.answer} ${(item.gold_terms || []).join(" ")}`,
+      fields: item,
+    }));
+  } catch {
+    return parseBlocks(text, "qa-json");
+  }
+}
+
+function parseJsonl(text) {
+  return text
+    .split(/\n+/)
+    .filter(Boolean)
+    .map((line, index) => {
+      const item = JSON.parse(line);
+      const title = `${item.ticket_id} | ${item.plan} | ${item.intent}`;
+      return {
+        id: item.ticket_id || `ticket-${index + 1}`,
+        title,
+        text: `${item.message} Resolution: ${item.resolution}`,
+        searchText: Object.values(item).join(" "),
+        fields: item,
+      };
+    });
+}
+
+function parseCsv(text) {
+  const rows = text.trim().split(/\n/);
+  const headers = rows.shift().split(",");
+  return rows.map((row, index) => {
+    const values = splitCsvRow(row);
+    const fields = Object.fromEntries(headers.map((header, fieldIndex) => [header, values[fieldIndex] || ""]));
+    return {
+      id: fields.order_id || `row-${index + 1}`,
+      title: `${fields.order_id} | ${fields.region} | ${fields.status}`,
+      text: headers.map((header) => `${header}: ${fields[header]}`).join("; "),
+      searchText: Object.values(fields).join(" "),
+      fields,
+    };
+  });
+}
+
+function parseTriples(text) {
+  return text
+    .split(/\n+/)
+    .filter((line) => line.trim().startsWith("rag:"))
+    .map((line, index) => ({
+      id: `triple-${index + 1}`,
+      title: line.replace(/\s*\.\s*$/, ""),
+      text: line,
+      searchText: line.replace(/rag:/g, " ").replace(/[^\w-]+/g, " "),
+      fields: { triple: line },
+    }));
+}
+
+function parseBlocks(text, fileName) {
+  return text
+    .split(/\n\s*\n/)
+    .map((block) => block.trim())
+    .filter(Boolean)
+    .map((block, index) => ({
+      id: `${fileName}-${index + 1}`,
+      title: block.startsWith("#") ? block.replace(/^#+\s*/, "") : `Section ${index + 1}`,
+      text: compact(block.replace(/^#+\s*/, ""), 360),
+      searchText: block,
+      fields: {},
+    }));
+}
+
+function splitCsvRow(row) {
+  const values = [];
+  let current = "";
+  let quoted = false;
+  for (const char of row) {
+    if (char === '"') quoted = !quoted;
+    else if (char === "," && !quoted) {
+      values.push(current);
+      current = "";
+    } else {
+      current += char;
+    }
+  }
+  values.push(current);
+  return values;
+}
+
+function sampleCard(chunk) {
+  return `
+    <article class="sample-card">
+      <span>${escapeHtml(chunk.id)}</span>
+      <strong>${escapeHtml(chunk.title)}</strong>
+      <p>${escapeHtml(compact(chunk.text, 220))}</p>
+    </article>
+  `;
 }
 
 function analyzeText(text) {
@@ -475,7 +899,13 @@ function analyzeText(text) {
 }
 
 function tokenize(text) {
-  return [...text.toLowerCase().matchAll(/[a-z][a-z0-9-]{1,}/g)].map((match) => match[0]);
+  return [...String(text).toLowerCase().matchAll(/[a-z0-9][a-z0-9_-]{1,}/g)]
+    .map((match) => match[0])
+    .filter((token) => !stopwords.has(token));
+}
+
+function relationTokens(text) {
+  return [...String(text).toLowerCase().matchAll(/rag:([a-z0-9_-]+)/g)].map((match) => match[1]);
 }
 
 function statCard(label, value) {
@@ -532,6 +962,11 @@ function extensionLabel(fileName) {
 
 function formatNumber(value) {
   return Number(value || 0).toLocaleString("en-US");
+}
+
+function compact(text, limit) {
+  const clean = String(text || "").replace(/\s+/g, " ").trim();
+  return clean.length <= limit ? clean : `${clean.slice(0, limit - 1).trim()}...`;
 }
 
 function setStatus(message) {
