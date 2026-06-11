@@ -321,6 +321,7 @@ const stopwords = new Set([
 const state = {
   activeFile: null,
   activeSlug: "",
+  chatRuns: [],
   chunks: [],
   customPrompt: "",
   demos: [],
@@ -332,6 +333,7 @@ const state = {
 const $ = (id) => document.getElementById(id);
 const localBySlug = new Map(localDemos.map((demo) => [demo.slug, demo]));
 let benchmarkTimer = null;
+let benchmarkRunId = 0;
 
 document.addEventListener("DOMContentLoaded", init);
 window.addEventListener("hashchange", renderRoute);
@@ -404,6 +406,7 @@ async function ensureDataset(slug) {
   setStatus("Loading dataset");
   cancelBenchmarkTimer();
   state.activeSlug = slug;
+  state.chatRuns = [];
   state.selectedQuery = null;
   state.processingQuery = null;
   state.customPrompt = "";
@@ -418,10 +421,10 @@ function renderChatWorkspace(errorMessage = "") {
   const file = demo ? state.activeFile : null;
   const analysis = file ? analyzeText(file.text) : null;
   const queries = demo ? benchmarkQueries[demo.slug] || [] : [];
-  const results = demo && state.selectedQuery ? runBenchmark(state.selectedQuery) : [];
+  const isProcessing = state.chatRuns.some((run) => run.status === "processing");
 
   setPageTitle("RAG Chat Benchmark");
-  setStatus(state.processingQuery ? "Benchmarking RAG methods" : demo ? `${state.chunks.length} chunks ready` : `${state.demos.length} datasets ready`);
+  setStatus(isProcessing ? "Benchmarking RAG methods" : demo ? `${state.chunks.length} chunks ready` : `${state.demos.length} datasets ready`);
 
   $("pageView").innerHTML = `
     <section class="chat-workspace">
@@ -448,9 +451,8 @@ function renderChatWorkspace(errorMessage = "") {
       <main class="chat-main">
         <section class="chat-thread" id="chatThread">
           ${renderChatIntro(demo, file, analysis, errorMessage)}
-          ${demo && !state.selectedQuery && !state.processingQuery ? renderEmptyChatSpace() : ""}
-          ${demo && state.processingQuery ? renderProcessingConversation(state.processingQuery) : ""}
-          ${demo && state.selectedQuery ? renderBenchmarkConversation(state.selectedQuery, results) : ""}
+          ${demo && !state.chatRuns.length ? renderEmptyChatSpace() : ""}
+          ${demo ? state.chatRuns.map((run) => renderBenchmarkRun(run)).join("") : ""}
         </section>
         <div class="chat-input-stack">
           ${demo ? renderInputToolbar() : ""}
@@ -606,7 +608,7 @@ function renderQueryOptions(queries) {
 }
 
 function renderInputToolbar() {
-  const hasChat = state.processingQuery || state.selectedQuery;
+  const hasChat = state.chatRuns.length > 0;
   const suggestionToggle = state.suggestionsVisible
     ? `<button type="button" class="toolbar-button" id="hideSuggestions">Hide suggested queries <span aria-hidden="true">↓</span></button>`
     : `<button type="button" class="toolbar-button" id="showSuggestions">Show suggested queries <span aria-hidden="true">↑</span></button>`;
@@ -617,6 +619,11 @@ function renderInputToolbar() {
       ${hasChat ? `<button type="button" class="toolbar-button" id="clearChat">Clear chat</button>` : ""}
     </div>
   `;
+}
+
+function renderBenchmarkRun(run) {
+  if (run.status === "processing") return renderProcessingConversation(run.query);
+  return renderBenchmarkConversation(run.query, run.results || []);
 }
 
 function renderBenchmarkConversation(query, results) {
@@ -691,6 +698,7 @@ function bindChatEvents(demo) {
     button.addEventListener("click", () => {
       const query = (benchmarkQueries[demo.slug] || [])[Number(button.dataset.queryIndex)];
       cancelBenchmarkTimer();
+      state.chatRuns = state.chatRuns.filter((run) => run.status !== "processing");
       state.customPrompt = query?.text || "";
       state.selectedQuery = null;
       state.processingQuery = null;
@@ -713,6 +721,7 @@ function bindChatEvents(demo) {
   });
   $("clearChat")?.addEventListener("click", () => {
     cancelBenchmarkTimer();
+    state.chatRuns = [];
     state.selectedQuery = null;
     state.processingQuery = null;
     state.customPrompt = "";
@@ -739,14 +748,28 @@ function bindChatEvents(demo) {
 
 function startBenchmark(query) {
   cancelBenchmarkTimer();
+  state.chatRuns = state.chatRuns.filter((run) => run.status !== "processing");
+  const run = {
+    id: ++benchmarkRunId,
+    query,
+    results: [],
+    status: "processing",
+  };
+
   state.customPrompt = "";
   state.selectedQuery = null;
   state.processingQuery = query;
   state.suggestionsVisible = false;
+  state.chatRuns.push(run);
   renderChatWorkspace();
   scrollChatToBottom();
 
   benchmarkTimer = window.setTimeout(() => {
+    const completedRun = state.chatRuns.find((item) => item.id === run.id);
+    if (completedRun) {
+      completedRun.results = runBenchmark(query);
+      completedRun.status = "completed";
+    }
     state.selectedQuery = query;
     state.processingQuery = null;
     benchmarkTimer = null;
