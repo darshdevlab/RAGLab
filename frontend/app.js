@@ -116,6 +116,14 @@ const state = {
 
 const $ = (id) => document.getElementById(id);
 
+function configureRuntimeMode() {
+  if (!API_BASE) return;
+  ["fileInput", "uploadButton", "datasetText", "indexText", "memoryText", "addMemory"].forEach((id) => {
+    const element = $(id);
+    if (element) element.hidden = true;
+  });
+}
+
 function setStatus(message) {
   $("status").textContent = message;
 }
@@ -413,6 +421,7 @@ function escapeHtml(value) {
 }
 
 document.addEventListener("DOMContentLoaded", async () => {
+  configureRuntimeMode();
   renderQuestionBank();
   $("runQuery").addEventListener("click", runQuery);
   $("loadSample").addEventListener("click", () => loadSample());

@@ -17,17 +17,26 @@ Built-in demo datasets:
 - Northwind Incident Runbook: SEV terms, service dependencies, and recovery playbooks.
 - AtlasDesk Support KB: refund, retention, plan, and memory-biased support policies.
 
-The local version avoids npm, pip, and external LLM APIs so the product behavior can be verified first. The hosted version uses Supabase for documents, chunks, pgvector embeddings, keyword search, memory, entities, relations, run logs, and evidence.
+The local version avoids npm, pip, and external LLM APIs so the product behavior can be verified first. The hosted version uses Supabase for seeded demo documents, chunks, pgvector embeddings, keyword search, demo memory, entities, and relations.
 
 ## Live Architecture
 
 - Frontend: static browser UI, publishable on GitHub Pages or Vercel.
-- Backend: Supabase Edge Function `raglab`.
+- Backend: Supabase Edge Function `raglab`, deployed as a public read-only demo API.
 - Database: Supabase Postgres tables prefixed with `raglab_`.
 - Vector search: Supabase pgvector on `raglab_chunks.embedding`.
 - Keyword search: Postgres full-text search RPC.
 - File storage: private Supabase bucket `raglab_documents`.
 - Demo site bucket: `raglab_site` exists, but Supabase serves HTML as text, so GitHub Pages/Vercel is the correct frontend host.
+
+## Security Model
+
+- No Supabase service key, database password, LLM key, or GitHub token is stored in the browser bundle or repository.
+- GitHub Pages serves static files only. GitHub environment secrets would not hide values from browser JavaScript, so the public demo does not use client-side secrets.
+- The hosted `raglab` Edge Function uses Supabase runtime secrets server-side and is intentionally public because there is no auth for the portfolio demo.
+- Public write paths are disabled in the hosted function: `POST /api/dataset/text` and `POST /api/memory` return `403`.
+- Public queries are restricted to the four seeded demo dataset IDs and do not insert run logs, result rows, evidence rows, uploads, or memories.
+- Local development still supports upload/index/memory experiments through `backend/server.py`.
 
 ## Run Locally
 
@@ -57,6 +66,8 @@ GET  /api/memory/{session_id}
 POST /api/memory
 ```
 
+In the hosted API, custom dataset indexing and memory writes are disabled for safety. Those endpoints remain listed because the local backend implements the full prototype workflow.
+
 ## Hosted API
 
 The hosted API base is:
@@ -81,12 +92,12 @@ The frontend automatically uses the hosted API outside localhost and keeps relat
 
 ## Deployment Direction
 
-Use GitHub Pages or Vercel for the frontend. Use Supabase for hosted persistence:
+Use GitHub Pages or Vercel for the frontend. Use Supabase for hosted demo retrieval:
 
-- Supabase Storage: uploaded files
-- Postgres: documents, chunks, metadata, runs
+- Supabase Storage: private seeded documents
+- Postgres: seeded documents, chunks, metadata, demo memory, entities, relations
 - pgvector: vector search
 - Postgres full-text search: BM25/keyword retrieval
-- Tables: memory, entities, relations
+- Tables: datasets, documents, chunks, memory, entities, relations
 
 The product compares RAG methods, not vector database vendors. Qdrant, Pinecone, Weaviate, or Neo4j can be added later as adapters if the project becomes a database benchmark.
