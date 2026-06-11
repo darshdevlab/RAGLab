@@ -185,6 +185,15 @@ type ChunkHit = {
   reason: string;
 };
 
+class HttpError extends Error {
+  status: number;
+
+  constructor(status: number, message: string) {
+    super(message);
+    this.status = status;
+  }
+}
+
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") return new Response("ok", { headers: corsHeaders });
   const url = new URL(req.url);
@@ -222,7 +231,8 @@ Deno.serve(async (req) => {
     return json({ detail: "Not found" }, 404);
   } catch (error) {
     console.error(error);
-    return json({ detail: error instanceof Error ? error.message : String(error) }, 500);
+    const status = error instanceof HttpError ? error.status : 500;
+    return json({ detail: error instanceof Error ? error.message : String(error) }, status);
   }
 });
 
@@ -266,8 +276,8 @@ async function countRows(table: string, datasetId: string) {
 
 async function compareQuestion(question: string, requestedDatasetId: unknown) {
   const cleanQuestion = question.trim();
-  if (!cleanQuestion) throw new Error("Question is required.");
-  if (cleanQuestion.length > 500) throw new Error("Question must be 500 characters or fewer.");
+  if (!cleanQuestion) throw new HttpError(400, "Question is required.");
+  if (cleanQuestion.length > 500) throw new HttpError(400, "Question must be 500 characters or fewer.");
   const datasetId = typeof requestedDatasetId === "string" && requestedDatasetId ? requestedDatasetId : DEFAULT_DATASET_ID;
   assertAllowedDataset(datasetId);
 
@@ -305,7 +315,7 @@ async function compareQuestion(question: string, requestedDatasetId: unknown) {
 }
 
 function assertAllowedDataset(datasetId: string) {
-  if (!ALLOWED_DATASET_IDS.has(datasetId)) throw new Error("Dataset is not available in the public demo.");
+  if (!ALLOWED_DATASET_IDS.has(datasetId)) throw new HttpError(403, "Dataset is not available in the public demo.");
 }
 
 async function keywordSearch(datasetId: string, question: string): Promise<ChunkHit[]> {
