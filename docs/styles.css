@@ -63,7 +63,6 @@ textarea:disabled {
 }
 
 .eyebrow,
-.status-pill,
 .section-kicker,
 .dataset-menu-item span,
 .dataset-menu-item small,
@@ -79,14 +78,34 @@ textarea:disabled {
   text-transform: uppercase;
 }
 
-.status-pill {
-  min-width: 150px;
-  border: 1px solid #d2d6d0;
-  border-radius: 999px;
+.top-actions {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.top-link {
+  display: inline-flex;
+  min-height: 34px;
+  align-items: center;
+  justify-content: center;
+  border: 1px solid #cbd8d2;
+  border-radius: 6px;
   background: #ffffff;
-  padding: 8px 12px;
+  color: #0f4b44;
+  padding: 0 13px;
+  font-size: 14px;
+  font-weight: 600;
+  line-height: 1;
   text-align: center;
-  text-transform: none;
+  text-decoration: none;
+  white-space: nowrap;
+}
+
+.top-link:hover {
+  border-color: #167064;
+  background: #eef8f5;
+  color: #0f3f39;
 }
 
 .page-view {
@@ -937,8 +956,19 @@ textarea:disabled {
 }
 
 @media (max-width: 560px) {
-  .status-pill {
-    min-width: 0;
+  .topbar {
+    gap: 12px;
+  }
+
+  .top-actions {
+    flex-wrap: wrap;
+    justify-content: flex-start;
+  }
+
+  .top-link {
+    min-height: 32px;
+    padding: 0 10px;
+    font-size: 13px;
   }
 
   .sidebar-stats,

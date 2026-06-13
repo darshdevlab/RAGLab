@@ -1243,7 +1243,8 @@ function compact(text, limit) {
 }
 
 function setStatus(message) {
-  $("status").textContent = message;
+  const status = $("status");
+  if (status) status.textContent = message;
 }
 
 function escapeHtml(value) {
