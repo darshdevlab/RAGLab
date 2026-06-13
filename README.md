@@ -2,6 +2,20 @@
 
 RAGLab is a full-stack portfolio prototype for comparing RAG strategies on the same dataset.
 
+**Live demo:** https://darshdevlab.github.io/RAGLab/
+
+![RAGLab end-to-end benchmark pipeline](assets/raglab-pipeline.png)
+
+## Screenshots
+
+Suggested-query chat workspace:
+
+![RAGLab suggested query workspace](assets/raglab-live-suggested-queries.png)
+
+Benchmark results view:
+
+![RAGLab benchmark results](assets/raglab-live-benchmark-results.png)
+
 It runs real local retrieval engines:
 
 - BM25 / keyword RAG
